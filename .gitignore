@@ -1,0 +1,13 @@
+.env
+venv/
+__pycache__/
+
+# Dữ liệu cục bộ / cá nhân
+history.json
+receipt.json
+evidence_data/
+
+# Bản Node.js cũ (không dùng nữa)
+node_modules/
+package.json
+package-lock.json
