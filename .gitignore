@@ -11,3 +11,6 @@ evidence_data/
 node_modules/
 package.json
 package-lock.json
+
+# Streamlit secrets (chứa PRIVATE_KEY)
+.streamlit/secrets.toml

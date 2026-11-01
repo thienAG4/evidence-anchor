@@ -154,7 +154,23 @@ Lưu ý khi deploy:
 - Ai có URL đều có thể bấm "Tạo biên nhận" và tiêu Sepolia ETH của ví test — chỉ để ví test, ít tiền.
 - Gói free sẽ "ngủ" khi không có truy cập, lần mở đầu tiên có thể mất ~1 phút.
 
-## 7. Bảo mật
+## 7. Deploy lên Streamlit Community Cloud
+
+1. Vào [share.streamlit.io](https://share.streamlit.io), đăng nhập bằng GitHub.
+2. **Create app → Deploy a public app from GitHub**:
+   - Repository: `thienAG4/evidence-anchor`, Branch: `main`, Main file path: `frontend/app.py`
+   - **Advanced settings → Python 3.12**, và ô **Secrets**:
+
+     ```toml
+     SEPOLIA_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
+     PRIVATE_KEY = "0x...khóa_ví_test"
+     ```
+3. Bấm **Deploy**. Streamlit Cloud cài `requirements.txt` ở thư mục gốc; các secret cấp cao nhất được đưa vào
+   biến môi trường nên `chain.py` đọc `os.environ` như khi chạy trên máy.
+
+Các lưu ý về ổ đĩa tạm (`history.json`) và việc người khác tiêu ETH của ví test ở mục 6 cũng áp dụng ở đây.
+
+## 8. Bảo mật
 
 - Không bao giờ commit `.env` hay private key. Nếu lỡ commit, coi như khóa đã lộ và đổi ví.
 - Hash từng file được ghi **công khai**: ai đã có sẵn một bản file có thể kiểm tra nó có trong hồ sơ hay không.
