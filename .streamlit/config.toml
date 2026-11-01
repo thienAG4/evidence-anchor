@@ -1,0 +1,4 @@
+[theme]
+# CSS của app dùng nền sáng -> luôn dùng theme sáng để chữ không bị trắng trên nền trắng
+base = "light"
+primaryColor = "#0e8c82"
