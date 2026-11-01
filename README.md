@@ -4,6 +4,8 @@ Lưu chứng bằng chứng số (ảnh, ghi âm, video, văn bản…) bằng *
 File gốc **không bao giờ lên blockchain** — chỉ có dấu vân tay (hash). Ai giữ file gốc và biên nhận đều có thể tự kiểm tra
 file còn nguyên vẹn và đã tồn tại trước thời điểm block được ghi.
 
+**Demo:** https://evidence-anchor.streamlit.app
+
 > Đây là dự án học tập. Chỉ dùng **ví test** trên Sepolia, không dùng ví có tiền thật.
 
 ---
