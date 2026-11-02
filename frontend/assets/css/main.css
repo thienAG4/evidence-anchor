@@ -1,0 +1,30 @@
+/* ==========================================================================
+   main.css – file CSS dùng chung, mọi trang đều nhúng file này.
+   CSS riêng của từng trang nằm trong assets/css/pages/ và được nhúng sau.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+/* 1. Nền tảng */
+@import url("base/variables.css");
+@import url("base/reset.css");
+@import url("base/typography.css");
+
+/* 2. Bố cục */
+@import url("layout/app-shell.css");
+@import url("layout/header.css");
+@import url("layout/sidebar.css");
+@import url("layout/footer.css");
+
+/* 3. Component */
+@import url("components/breadcrumb.css");
+@import url("components/button.css");
+@import url("components/badge.css");
+@import url("components/card.css");
+@import url("components/form.css");
+@import url("components/date-range-picker.css");
+@import url("components/table.css");
+@import url("components/alert.css");
+@import url("components/stepper.css");
+@import url("components/modal.css");
+@import url("components/drawer.css");

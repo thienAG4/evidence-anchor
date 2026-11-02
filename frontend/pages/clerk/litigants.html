@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đương sự – EvidenceChain</title>
+  <link rel="icon" type="image/png" href="../../assets/images/logo.png">
+  <link rel="stylesheet" href="../../assets/css/main.css">
+  <link rel="stylesheet" href="../../assets/css/pages/litigants.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script defer src="../../assets/js/core/app.js"></script>
+  <script defer src="../../assets/js/config/navigation.js"></script>
+  <script defer src="../../assets/js/config/status.js"></script>
+  <script defer src="../../assets/js/data/mock-data.js"></script>
+  <script defer src="../../assets/js/core/ui.js"></script>
+  <script defer src="../../assets/js/components/app-header.js"></script>
+  <script defer src="../../assets/js/components/app-sidebar.js"></script>
+  <script defer src="../../assets/js/components/app-footer.js"></script>
+  <script defer src="../../assets/js/pages/litigants.js"></script>
+</head>
+<body class="app">
+  <app-header role="clerk"></app-header>
+
+  <div class="app-body">
+    <app-sidebar role="clerk" active="litigants"></app-sidebar>
+
+    <main class="app-main">
+      <div class="page">
+        <header class="page-header">
+          <h1 class="page-title">Đương sự</h1>
+          <p class="page-subtitle">Danh sách đương sự đã sử dụng hệ thống lưu chứng cứ.</p>
+        </header>
+
+        <div class="toolbar" role="search">
+          <div class="input-group toolbar__search">
+            <i data-lucide="search" class="input-group__icon"></i>
+            <input id="filter-search" class="input-group__control" type="search"
+                   placeholder="Tìm theo họ tên đương sự" aria-label="Tìm theo họ tên">
+          </div>
+          <div class="input-group toolbar__filter">
+            <select id="filter-status" class="input-group__control" aria-label="Lọc theo trạng thái">
+              <option value="">Trạng thái: Tất cả</option>
+              <option value="pendingLock">Có lần chờ khóa</option>
+              <option value="unchecked">Có file chưa kiểm tra</option>
+            </select>
+            <i data-lucide="chevron-down" class="input-group__trailing"></i>
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="table table--compact table--hover">
+            <thead>
+              <tr>
+                <th>Họ tên</th>
+                <th>Số CCCD</th>
+                <th>Số điện thoại</th>
+                <th class="is-center">Số lần lưu chứng cứ</th>
+                <th class="is-center">Tổng số file</th>
+                <th>Lần gần nhất</th>
+                <th class="table__chevron"><span class="sr-only">Xem</span></th>
+              </tr>
+            </thead>
+            <tbody id="litigant-table-body"></tbody>
+          </table>
+        </div>
+        <p id="litigant-count" class="table-caption"></p>
+      </div>
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+</body>
+</html>

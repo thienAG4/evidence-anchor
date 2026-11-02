@@ -1,0 +1,51 @@
+/* ==========================================================================
+   Status badge
+   Không tạo tay: dùng EC.badge('match') trong JS (assets/js/config/status.js)
+   để icon, chữ và màu luôn đi cùng nhau.
+   ========================================================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.badge .lucide {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+.badge--match    { background: var(--status-match-bg);    color: var(--status-match-text); }
+.badge--mismatch { background: var(--status-mismatch-bg); color: var(--status-mismatch-text); }
+.badge--pending  { background: var(--status-pending-bg);  color: var(--status-pending-text); }
+.badge--neutral  { background: var(--status-neutral-bg);  color: var(--status-neutral-text); }
+.badge--empty    { background: var(--status-empty-bg);    color: var(--status-empty-text); }
+
+/* Badge viền mảnh dùng cho nhãn phụ ("Hồ sơ điện tử chuẩn hóa") */
+.badge--outline-neutral {
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-text);
+  font-size: var(--text-xs);
+}
+
+.badge--outline-match {
+  background: var(--status-match-bg);
+  color: var(--status-match-text);
+  font-size: var(--text-xs);
+}
+
+/* Chấm màu trong phần chú thích tổng hợp */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}

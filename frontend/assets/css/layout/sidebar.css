@@ -1,0 +1,56 @@
+/* ==========================================================================
+   Sidebar – component <app-sidebar>
+   ========================================================================== */
+
+app-sidebar {
+  flex-shrink: 0;
+  width: var(--sidebar-width);
+}
+
+.sidebar {
+  height: 100%;
+  padding-top: var(--space-4);
+  background-color: var(--color-surface);
+  background-image: url("../../images/sidebar-artwork.png");
+  background-size: 100% auto;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  border-right: 1px solid var(--color-border);
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  border-left: 3px solid transparent;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  white-space: nowrap;
+  transition: background-color var(--transition);
+}
+
+.sidebar__link .lucide {
+  color: var(--color-text-secondary);
+}
+
+.sidebar__link:hover {
+  background-color: rgba(255, 248, 231, 0.5);
+}
+
+.sidebar__link.is-active {
+  background-color: var(--color-background);
+  border-left-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.sidebar__link.is-active .lucide {
+  color: var(--color-primary);
+}

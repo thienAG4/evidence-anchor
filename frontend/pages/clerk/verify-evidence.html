@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đối chiếu chứng cứ – EvidenceChain</title>
+  <link rel="icon" type="image/png" href="../../assets/images/logo.png">
+  <link rel="stylesheet" href="../../assets/css/main.css">
+  <link rel="stylesheet" href="../../assets/css/pages/verify-evidence.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script defer src="../../assets/js/core/app.js"></script>
+  <script defer src="../../assets/js/config/navigation.js"></script>
+  <script defer src="../../assets/js/config/status.js"></script>
+  <script defer src="../../assets/js/data/mock-data.js"></script>
+  <script defer src="../../assets/js/core/ui.js"></script>
+  <script defer src="../../assets/js/components/app-header.js"></script>
+  <script defer src="../../assets/js/components/app-sidebar.js"></script>
+  <script defer src="../../assets/js/components/app-footer.js"></script>
+  <script defer src="../../assets/js/pages/verify-evidence.js"></script>
+</head>
+<body class="app">
+  <app-header role="clerk"></app-header>
+
+  <div class="app-body">
+    <app-sidebar role="clerk" active="submissions"></app-sidebar>
+
+    <main class="app-main">
+      <div class="page">
+        <nav class="breadcrumb" aria-label="Đường dẫn">
+          <a class="breadcrumb__link link--arrow" href="submissions.html">
+            <i data-lucide="arrow-left" class="icon-sm"></i>Lần lưu chứng cứ
+          </a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current">Đối chiếu <span class="code-text" data-field="receiptId"></span></span>
+        </nav>
+
+        <header class="page-header">
+          <h1 class="page-title">Đối chiếu chứng cứ</h1>
+          <p class="page-subtitle">
+            So sánh file trong hồ sơ của Tòa với bản đương sự đã lưu. File được kiểm tra ngay trên máy, hệ thống không lưu file.
+          </p>
+        </header>
+
+        <!-- Không mở được trang: thiếu mã, mã sai, hoặc lần lưu chưa khóa -->
+        <section id="verify-unavailable" class="card page-section verify-unavailable" hidden>
+          <i data-lucide="file-search" class="icon-xl"></i>
+          <p id="verify-unavailable-text" class="verify-unavailable__text"></p>
+          <a class="btn btn--primary" href="submissions.html">
+            <i data-lucide="arrow-left" class="icon-sm"></i>Về danh sách lần lưu chứng cứ
+          </a>
+        </section>
+
+        <!-- Thông báo đã lưu kết quả -->
+        <div id="saved-banner" class="alert alert--success page-section" role="status" hidden>
+          <i data-lucide="check"></i>
+          <span>Đã lưu kết quả kiểm tra lúc <span data-field="savedAt"></span>. Kết quả không thể sửa hay xóa.</span>
+        </div>
+
+        <!-- Thông tin đối chiếu -->
+        <section class="card page-section">
+          <header class="card__header">
+            <h2 class="card__title"><i data-lucide="folder-cog"></i>Thông tin đối chiếu</h2>
+            <span class="badge badge--outline-neutral"><i data-lucide="badge-check"></i>Hồ sơ điện tử chuẩn hóa</span>
+          </header>
+
+          <div class="verify-info__grid">
+            <div class="form-field">
+              <div class="form-label-row">
+                <span class="form-label" id="receipt-label">Lần lưu chứng cứ</span>
+                <span class="form-label-hint">Mã tham chiếu hồ sơ</span>
+              </div>
+              <!-- Chỉ hiển thị: lần lưu chứng được chọn từ trang Lần lưu chứng cứ (?id=) -->
+              <div class="input-group input-group--readonly" aria-labelledby="receipt-label">
+                <i data-lucide="archive" class="input-group__icon"></i>
+                <span id="receipt-display" class="input-group__control"></span>
+              </div>
+              <p class="form-hint">Đã kiểm duyệt danh tính người nộp qua VNeID</p>
+            </div>
+
+            <div class="form-field">
+              <div class="form-label-row">
+                <label class="form-label" for="phase-select">Thời điểm đối chiếu</label>
+                <span class="form-label-hint">Giai đoạn tố tụng</span>
+              </div>
+              <div class="input-group">
+                <select id="phase-select" class="input-group__control verify-info__phase"></select>
+                <i data-lucide="chevron-down" class="input-group__trailing"></i>
+              </div>
+              <p class="form-hint">Ghi nhận biên bản theo Bộ luật Tố tụng Dân sự</p>
+            </div>
+          </div>
+
+          <div class="verify-info__meta">
+            <p>
+              Ghi nhận lúc: <strong data-field="recordedAt"></strong>
+              <span class="verify-info__sep" aria-hidden="true">|</span>
+              Đã khóa: <strong data-field="lockedAt"></strong>
+            </p>
+            <span class="badge badge--outline-match"><i data-lucide="lock"></i>Hồ sơ niêm phong bất biến</span>
+          </div>
+        </section>
+
+        <!-- Danh sách file cần đối chiếu -->
+        <section class="card page-section">
+          <header class="card__header">
+            <div>
+              <h2 class="card__title">Danh sách file cần đối chiếu</h2>
+              <p class="section-subtitle">Tiến hành tải file từ máy trạm của Tòa để đối chiếu tức thời</p>
+            </div>
+            <span id="progress-text" class="card__meta"></span>
+          </header>
+
+          <div class="table-wrapper">
+            <table class="table table--compact verify-table">
+              <thead>
+                <tr>
+                  <th style="width: 20%">Mã file</th>
+                  <th>File trong hồ sơ của Tòa</th>
+                  <th style="width: 24%">Kết quả</th>
+                  <th style="width: 10%" class="is-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="verify-table-body"></tbody>
+            </table>
+          </div>
+
+          <!-- Hộp thông báo dưới bảng: nội dung thay đổi theo kết quả -->
+          <div id="verify-alert" class="alert alert--info verify-alert"></div>
+        </section>
+
+        <!-- Hành động -->
+        <div class="page-actions page-actions--end">
+          <p id="verify-summary" class="verify-summary" hidden></p>
+          <span id="save-wrapper" title="Chọn ít nhất một file để đối chiếu">
+            <button id="save-button" type="button" class="btn btn--primary" disabled>
+              <i data-lucide="save"></i>Lưu kết quả kiểm tra
+            </button>
+          </span>
+          <a id="restart-button" class="btn btn--secondary" href="submissions.html" hidden>
+            <i data-lucide="refresh-ccw"></i>Đối chiếu lần lưu chứng cứ khác
+          </a>
+          <p class="form-hint">Biên bản kết quả kiểm tra sẽ được xuất tự động kèm dấu thời gian Tòa án</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+
+  <!-- Modal xác nhận lưu kết quả -->
+  <div id="modal-confirm-save" class="modal" data-dismissible hidden>
+    <div class="modal__dialog modal__dialog--wide" role="alertdialog" aria-modal="true" aria-labelledby="confirm-save-title">
+      <div class="modal__icon modal__icon--warning"><i data-lucide="triangle-alert"></i></div>
+      <h2 id="confirm-save-title" class="modal__title modal__title--brand">Lưu kết quả kiểm tra?</h2>
+      <p class="modal__text">
+        Kết quả sẽ được ghi vĩnh viễn và không thể sửa hay xóa.<br>
+        Đương sự sẽ thấy kết quả Giống/Khác của từng file.
+      </p>
+
+      <div class="modal__body summary-box confirm-summary">
+        <p>Lần lưu chứng cứ: <strong class="code-text" data-field="receiptId"></strong></p>
+        <p class="text-secondary">Thời điểm: <strong class="confirm-summary__phase" data-field="phase"></strong></p>
+        <p class="confirm-summary__counts">
+          <span class="text-success"><span class="dot"></span> Giống: <span data-field="matchCount"></span></span>
+          <span class="text-primary"><span class="dot"></span> Khác: <span data-field="mismatchCount"></span></span>
+          <span class="text-secondary"><span class="dot"></span> Chưa đối chiếu: <span data-field="pendingCount"></span></span>
+        </p>
+      </div>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--secondary" data-close>Quay lại</button>
+        <button id="confirm-save-button" type="button" class="btn btn--primary" data-autofocus>
+          <i data-lucide="check"></i>Xác nhận lưu
+        </button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

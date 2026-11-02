@@ -1,0 +1,26 @@
+/* ==========================================================================
+   Breadcrumb – đường dẫn quay lại trang cha
+   <nav class="breadcrumb">
+     <a class="breadcrumb__link link--arrow" href="…"><i data-lucide="arrow-left"></i>Trang cha</a>
+     <span class="breadcrumb__sep">/</span>
+     <span class="breadcrumb__current">Trang hiện tại</span>
+   </nav>
+   ========================================================================== */
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb__link:hover {
+  color: var(--color-primary);
+}
+
+.breadcrumb__current {
+  color: var(--color-text);
+  font-weight: 500;
+}

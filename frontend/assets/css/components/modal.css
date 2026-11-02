@@ -1,0 +1,118 @@
+/* ==========================================================================
+   Modal (hộp thoại) – mở/đóng bằng EC.modal.open('id') / EC.modal.close('id')
+   <div class="modal" id="…" hidden>
+     <div class="modal__dialog" role="dialog" aria-modal="true">…</div>
+   </div>
+   ========================================================================== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  animation: fade-in 150ms ease;
+}
+
+.modal__dialog {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-modal);
+  text-align: center;
+  animation: pop-in 180ms ease;
+}
+
+.modal__dialog--wide {
+  max-width: 520px;
+}
+
+.modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-5);
+  border-radius: var(--radius-full);
+}
+
+.modal__icon .lucide {
+  width: 26px;
+  height: 26px;
+}
+
+.modal__icon--success { background: var(--status-match-bg);    color: var(--status-match-text); }
+.modal__icon--error   { background: var(--status-mismatch-bg); color: var(--status-mismatch-text); }
+.modal__icon--warning { background: var(--status-pending-bg);  color: var(--status-pending-text); }
+
+.modal__title {
+  margin-bottom: var(--space-2);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  color: var(--color-text);
+}
+
+.modal__title--brand {
+  color: var(--color-primary-dark);
+}
+
+.modal__text {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
+.modal__note {
+  margin-top: var(--space-3);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.modal__body {
+  margin-top: var(--space-5);
+}
+
+.modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.modal__actions--single {
+  grid-template-columns: 1fr;
+}
+
+/* Thanh tiến trình (modal đăng nhập thành công) */
+.progress {
+  height: 4px;
+  margin-top: var(--space-6);
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.progress__bar {
+  height: 100%;
+  width: 0;
+  background: var(--status-match-text);
+  transition: width 100ms linear;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+}

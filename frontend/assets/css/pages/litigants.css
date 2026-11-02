@@ -1,0 +1,14 @@
+/* ==========================================================================
+   Trang Đương sự (thư ký) – pages/clerk/litigants.html
+   ========================================================================== */
+
+#litigant-table-body td:first-child {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+#litigant-table-body td:nth-child(2),
+#litigant-table-body td:nth-child(3) {
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}

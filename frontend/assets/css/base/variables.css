@@ -1,0 +1,84 @@
+/* ==========================================================================
+   Design tokens – nguồn: design/stitch-export/evidencechain_civil_judicial_system/DESIGN.md
+   Mọi màu, font, kích thước dùng lại trong dự án đều lấy từ đây.
+   ========================================================================== */
+
+:root {
+  /* ---- Màu thương hiệu ---- */
+  --color-primary: #b71c1c;          /* Nút chính, link, menu đang chọn */
+  --color-primary-dark: #8b0f0f;     /* Tiêu đề trang, hover nút chính */
+  --color-accent-gold: #d4a017;      /* Viền dưới header, focus ring */
+
+  /* ---- Nền & bề mặt ---- */
+  --color-background: #fff8e7;       /* Nền giấy (parchment) */
+  --color-surface: #ffffff;          /* Card, bảng, sidebar, modal */
+  --color-surface-muted: #faf6ec;    /* Header bảng, hộp tóm tắt */
+  --color-row-hover: #fffbf2;
+  --color-border: #e8dcc0;
+
+  /* ---- Chữ ---- */
+  --color-text: #333333;
+  --color-text-secondary: #666666;
+  --color-text-muted: #999999;
+  --color-text-on-dark: #ffffff;
+  --color-text-on-dark-muted: #e8dcc0;
+
+  /* ---- Trạng thái (badge) ---- */
+  --status-match-bg: #e6f4ea;
+  --status-match-text: #1e6b34;
+  --status-mismatch-bg: #fdecec;
+  --status-mismatch-text: #b71c1c;
+  --status-pending-bg: #fff4d6;
+  --status-pending-text: #7a5a00;
+  --status-neutral-bg: #f1ece0;
+  --status-neutral-text: #5c4a1f;
+  --status-empty-bg: #eeeeee;
+  --status-empty-text: #555555;
+
+  /* ---- Nút bị khóa ---- */
+  --color-disabled-bg: #eeeeee;
+  --color-disabled-text: #999999;
+  --color-disabled-border: #dddddd;
+
+  /* ---- Font ---- */
+  --font-body: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-base: 15px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+
+  /* ---- Khoảng cách (thang 4/8px) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ---- Hình khối ---- */
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-full: 999px;
+  --shadow-overlay: 0 4px 16px rgba(51, 51, 51, 0.08);
+  --shadow-modal: 0 12px 32px rgba(51, 51, 51, 0.18);
+  --scrim: rgba(51, 51, 51, 0.4);
+
+  /* ---- Kích thước bố cục ---- */
+  --header-height: 64px;
+  --sidebar-width: 240px;
+  --footer-height: 48px;
+  --content-max-width: 1200px;
+  --control-height: 44px;
+  --table-row-height: 52px;
+  --drawer-width: 440px;
+
+  --transition: 150ms ease;
+}

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết biên nhận – EvidenceChain</title>
+  <link rel="icon" type="image/png" href="../../assets/images/logo.png">
+  <link rel="stylesheet" href="../../assets/css/main.css">
+  <link rel="stylesheet" href="../../assets/css/pages/receipt-detail.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script defer src="../../assets/js/core/app.js"></script>
+  <script defer src="../../assets/js/config/navigation.js"></script>
+  <script defer src="../../assets/js/config/status.js"></script>
+  <script defer src="../../assets/js/data/mock-data.js"></script>
+  <script defer src="../../assets/js/core/ui.js"></script>
+  <script defer src="../../assets/js/components/app-header.js"></script>
+  <script defer src="../../assets/js/components/app-sidebar.js"></script>
+  <script defer src="../../assets/js/components/app-footer.js"></script>
+  <script defer src="../../assets/js/pages/receipt-detail.js"></script>
+</head>
+<body class="app">
+  <app-header role="litigant"></app-header>
+
+  <div class="app-body">
+    <app-sidebar role="litigant" active="receipts"></app-sidebar>
+
+    <main class="app-main">
+      <div class="page">
+        <nav class="breadcrumb" aria-label="Đường dẫn">
+          <a class="breadcrumb__link link--arrow" href="submit-evidence.html#receipt-history">
+            <i data-lucide="arrow-left" class="icon-sm"></i>Các lần lưu chứng
+          </a>
+          <span class="breadcrumb__sep">/</span>
+          <span class="breadcrumb__current code-text" data-field="id"></span>
+        </nav>
+
+        <!-- Không tìm thấy biên nhận -->
+        <section id="receipt-not-found" class="card" hidden>
+          <p>Không tìm thấy biên nhận này. Vui lòng quay lại danh sách các lần lưu chứng.</p>
+        </section>
+
+        <div id="receipt-content">
+          <header class="page-header">
+            <h1 class="page-title">Biên nhận <span class="code-text" data-field="id"></span></h1>
+            <p class="page-subtitle" data-field="subtitle"></p>
+          </header>
+
+          <!-- Tiến trình -->
+          <section class="card page-section receipt-progress" aria-label="Tiến trình">
+            <ol id="receipt-stepper" class="stepper"></ol>
+          </section>
+
+          <!-- Thông tin chung -->
+          <section class="card page-section">
+            <h2 class="card__header card__title">Thông tin chung</h2>
+            <dl class="info-grid">
+              <dt>Mã biên nhận:</dt>
+              <dd class="code-text" data-field="id"></dd>
+              <dt>Thời điểm:</dt>
+              <dd data-field="recordedAt"></dd>
+              <dt>Người lưu:</dt>
+              <dd data-field="litigant"></dd>
+              <dt>Số file:</dt>
+              <dd data-field="fileCount"></dd>
+            </dl>
+          </section>
+
+          <!-- Mã từng file -->
+          <section class="card page-section">
+            <header class="card__header">
+              <div>
+                <h2 class="card__title">Mã cần ghi khi nộp đơn cho Tòa</h2>
+                <p class="section-subtitle">Ghi mã của từng file vào danh mục tài liệu kèm đơn khởi kiện.</p>
+              </div>
+            </header>
+
+            <div class="receipt-files">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 25%">Mã cần ghi</th>
+                    <th>File của bạn</th>
+                    <th style="width: 25%">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody id="receipt-files-body"></tbody>
+              </table>
+            </div>
+
+            <p id="receipt-legend" class="receipt-files__legend" hidden>
+              <strong>Chú thích:</strong>
+              Trùng khớp: file không thay đổi · Không khớp: file đã bị thay đổi ·
+              Đang kiểm tra: Tòa đang đối chiếu · Chưa kiểm tra: Tòa chưa đối chiếu
+            </p>
+            <p class="receipt-files__footnote">
+              Ứng dụng này không nộp hồ sơ thay bạn. Hãy nộp file và đơn trực tiếp cho Tòa, kèm các mã ở trên.
+            </p>
+
+            <!-- Thông tin kỹ thuật: chỉ hiện khi file có mã băm thật -->
+            <details id="receipt-tech" class="tech-details" hidden>
+              <summary>Thông tin kỹ thuật (mã băm SHA-256)</summary>
+              <ul id="receipt-tech-list" class="tech-details__list"></ul>
+            </details>
+          </section>
+
+          <aside class="alert alert--note page-section">
+            <div>
+              <p class="alert__title">Lưu ý</p>
+              <p class="alert__text">
+                Hãy giữ nguyên file gốc. Nếu file bị gửi qua Zalo, nén, hoặc mở ra rồi lưu lại, Tòa sẽ thấy kết quả
+                "Không giống bản bạn lưu". Biên nhận chỉ chứng minh file đã có từ thời điểm trên, không chứng minh nội dung là thật.
+              </p>
+            </div>
+          </aside>
+
+          <div class="page-actions">
+            <a class="btn btn--secondary" href="submit-evidence.html">
+              <i data-lucide="plus" class="icon-sm"></i>Lưu chứng lần mới
+            </a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+</body>
+</html>

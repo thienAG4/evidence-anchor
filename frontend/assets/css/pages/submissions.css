@@ -1,0 +1,51 @@
+/* ==========================================================================
+   Trang Các lần lưu chứng cứ (thư ký) – pages/clerk/submissions.html
+   ========================================================================== */
+
+#submission-table-body td:first-child {
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Nút "Đối chiếu" bị khóa vẫn cần hiện tooltip → dùng thẻ <span> bọc ngoài */
+.submission-action[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.submission-drawer__status {
+  margin-top: var(--space-2);
+}
+
+.drawer-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+}
+
+.drawer-file + .drawer-file {
+  border-top: 1px solid var(--color-border);
+}
+
+.drawer-file__code {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.drawer-file__code .lucide {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+}
+
+.drawer__footer .btn[aria-disabled="true"] {
+  pointer-events: none;
+  background-color: var(--color-disabled-bg);
+  border-color: var(--color-disabled-border);
+  color: var(--color-disabled-text);
+}

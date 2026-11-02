@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lưu chứng cứ – EvidenceChain</title>
+  <link rel="icon" type="image/png" href="../../assets/images/logo.png">
+  <link rel="stylesheet" href="../../assets/css/main.css">
+  <link rel="stylesheet" href="../../assets/css/pages/submit-evidence.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script defer src="../../assets/js/core/app.js"></script>
+  <script defer src="../../assets/js/config/navigation.js"></script>
+  <script defer src="../../assets/js/config/status.js"></script>
+  <script defer src="../../assets/js/data/mock-data.js"></script>
+  <script defer src="../../assets/js/core/ui.js"></script>
+  <script defer src="../../assets/js/components/app-header.js"></script>
+  <script defer src="../../assets/js/components/app-sidebar.js"></script>
+  <script defer src="../../assets/js/components/app-footer.js"></script>
+  <script defer src="../../assets/js/pages/submit-evidence.js"></script>
+</head>
+<body class="app">
+  <app-header role="litigant"></app-header>
+
+  <div class="app-body">
+    <app-sidebar role="litigant" active="submit"></app-sidebar>
+
+    <main class="app-main">
+      <div class="page">
+        <header class="page-header">
+          <h1 class="page-title">Lưu chứng cứ file tài liệu</h1>
+          <p class="page-subtitle">Ghi nhận mốc thời gian của file để đối chiếu sau này.</p>
+        </header>
+
+        <!-- Khối chọn file & lưu chứng -->
+        <section class="card page-section" aria-label="Chọn file để lưu chứng cứ">
+          <div id="file-picker" class="file-picker">
+            <p>Chọn một hoặc nhiều file (PDF, hình ảnh, video, âm thanh)</p>
+            <label class="btn btn--secondary">
+              <i data-lucide="upload"></i>
+              Chọn file
+              <input id="file-input" class="sr-only" type="file" multiple
+                     accept=".pdf,.doc,.docx,image/*,video/*,audio/*">
+            </label>
+          </div>
+
+          <ul id="file-list" class="file-list" hidden></ul>
+
+          <p class="submit-evidence__notice">
+            File được tính mã băm ngay trên máy của bạn và không được gửi lên hệ thống.
+            Sau khi lưu chứng cứ, không thể thêm hoặc bớt file trong lần này.
+          </p>
+
+          <button id="submit-button" type="button" class="btn btn--primary" disabled>
+            <i data-lucide="lock"></i>
+            <span id="submit-label">Lưu chứng cứ</span>
+          </button>
+        </section>
+
+        <!-- Lịch sử lưu chứng của đương sự -->
+        <section id="receipt-history" class="page-section submit-evidence__history">
+          <h2 class="section-title">Các lần lưu chứng</h2>
+          <div class="table-wrapper">
+            <table class="table table--plain-head table--hover">
+              <thead>
+                <tr>
+                  <th style="width: 20%">Mã biên nhận</th>
+                  <th style="width: 12%" class="is-center">Số file</th>
+                  <th style="width: 24%">Ghi nhận lúc</th>
+                  <th style="width: 24%">Trạng thái</th>
+                  <th><span class="sr-only">Thao tác</span></th>
+                </tr>
+              </thead>
+              <tbody id="receipt-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+
+  <!-- Modal: lưu chứng thành công -->
+  <div id="modal-submit-success" class="modal" data-dismissible hidden>
+    <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="submit-success-title">
+      <div class="modal__icon modal__icon--success"><i data-lucide="check"></i></div>
+      <h2 id="submit-success-title" class="modal__title">Lưu chứng cứ thành công</h2>
+      <p class="modal__text">
+        Đã ghi nhận <span data-field="count">0</span> chứng cứ.<br>
+        Hãy giữ nguyên file gốc và mã biên nhận.
+      </p>
+
+      <div class="modal__body summary-box">
+        <dl class="kv-list">
+          <div class="kv-list__row"><dt class="kv-list__label">Mã biên nhận</dt><dd class="kv-list__value code-text" data-field="id"></dd></div>
+          <div class="kv-list__row"><dt class="kv-list__label">Ghi nhận lúc</dt><dd class="kv-list__value" data-field="recordedAt"></dd></div>
+          <div class="kv-list__row"><dt class="kv-list__label">Số chứng cứ</dt><dd class="kv-list__value" data-field="count"></dd></div>
+          <div class="kv-list__row"><dt class="kv-list__label">Trạng thái</dt><dd class="kv-list__value" data-field="status"></dd></div>
+        </dl>
+      </div>
+
+      <p class="modal__note">
+        Lần lưu chứng cứ sẽ được khóa lúc 23:59 hôm nay.<br>
+        Sau đó không ai sửa được, kể cả Tòa.
+      </p>
+
+      <div class="modal__actions">
+        <button type="button" class="btn btn--secondary" data-close>Lưu chứng cứ lần mới</button>
+        <a id="success-detail-link" class="btn btn--primary" href="receipt-detail.html" data-autofocus>Xem chi tiết</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: lưu chứng thất bại -->
+  <div id="modal-submit-error" class="modal" data-dismissible hidden>
+    <div class="modal__dialog" role="alertdialog" aria-modal="true" aria-labelledby="submit-error-title">
+      <div class="modal__icon modal__icon--error"><i data-lucide="circle-x"></i></div>
+      <h2 id="submit-error-title" class="modal__title">Lưu chứng cứ thất bại</h2>
+      <p class="modal__text">Không thể kết nối đến hệ thống để ghi nhận. Chưa có lần lưu chứng cứ nào được tạo.</p>
+      <p class="modal__note">File của bạn vẫn ở trên máy và không bị gửi đi. Danh sách file đã chọn được giữ nguyên.</p>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--secondary" data-close>Đóng</button>
+        <button id="retry-button" type="button" class="btn btn--primary" data-autofocus>Thử lại</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

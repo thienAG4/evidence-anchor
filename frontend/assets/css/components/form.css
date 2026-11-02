@@ -1,0 +1,255 @@
+/* ==========================================================================
+   Form: input, select, checkbox, ô tìm kiếm, thanh bộ lọc, chọn file
+   ========================================================================== */
+
+.form-field + .form-field {
+  margin-top: var(--space-5);
+}
+
+.form-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.form-label-row .form-label {
+  margin-bottom: 0;
+}
+
+.form-label-hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.form-hint {
+  margin-top: var(--space-2);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Ô nhập có icon hai bên ----
+   <div class="input-group">
+     <i data-lucide="user" class="input-group__icon"></i>
+     <input class="input-group__control">
+     <button class="input-group__action">…</button>
+   </div>                                                        */
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--control-height);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  transition: border-color var(--transition);
+}
+
+.input-group:focus-within {
+  border-color: var(--color-accent-gold);
+  outline: 3px solid rgba(212, 160, 23, 0.35);
+}
+
+.input-group__icon {
+  margin-left: 14px;
+  color: var(--color-text-secondary);
+}
+
+.input-group__icon.lucide {
+  width: 16px;
+  height: 16px;
+}
+
+.input-group__control {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 14px 0 10px;
+  border: 0;
+  background: transparent;
+  font-size: var(--text-base);
+  outline: none;
+  appearance: none;
+}
+
+.input-group__control::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1; /* Firefox mặc định làm mờ thêm placeholder */
+}
+
+.input-group__trailing {
+  margin-right: 14px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.input-group__trailing.lucide {
+  width: 16px;
+  height: 16px;
+}
+
+.input-group__action {
+  display: inline-flex;
+  margin-right: 10px;
+  padding: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+.input-group__action:hover {
+  color: var(--color-primary);
+}
+
+/* select dùng chung input-group: con trỏ tay */
+select.input-group__control {
+  cursor: pointer;
+}
+
+/* Ô chỉ hiển thị giá trị, không cho sửa */
+.input-group--readonly {
+  background: var(--color-surface-muted);
+}
+
+.input-group--readonly .input-group__control {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.input-group--disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-secondary);
+}
+
+/* ---- Checkbox ---- */
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-md);
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* ---- Thanh bộ lọc trên bảng ---- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.toolbar__search {
+  flex: 1 1 320px;
+}
+
+.toolbar__filter {
+  flex: 0 0 220px;
+}
+
+/* Ô khoảng ngày: đủ rộng cho "05/10/2026 – 31/10/2026" + nút xóa, không xê dịch khi chọn */
+.toolbar__filter--wide {
+  flex-basis: 280px;
+}
+
+/* ---- Vùng chọn file ---- */
+.file-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  text-align: center;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+
+.file-picker.is-dragover {
+  border-color: var(--color-accent-gold);
+  border-style: dashed;
+  background: var(--color-background);
+}
+
+/* ---- Danh sách file đã chọn ---- */
+.file-list {
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.file-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  height: 40px;
+  padding: 0 var(--space-4);
+  font-size: var(--text-md);
+}
+
+.file-list__item + .file-list__item {
+  border-top: 1px solid var(--color-border);
+}
+
+.file-list__name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.file-list__name .lucide {
+  color: var(--color-text-secondary);
+}
+
+.file-list__filename {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list__size {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Tên file kèm icon theo loại (dùng trong bảng) */
+.file-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  letter-spacing: 0.02em;
+}
+
+.file-name .lucide {
+  width: 16px;
+  height: 16px;
+}
+
+.file-name--pdf .lucide   { color: var(--color-primary); }
+.file-name--image .lucide { color: var(--color-accent-gold); }
+.file-name--audio .lucide { color: var(--status-pending-text); }
+.file-name--video .lucide { color: var(--color-primary); }
+.file-name--other .lucide { color: var(--color-text-secondary); }

@@ -1,0 +1,72 @@
+/* ==========================================================================
+   Drawer – bảng thông tin trượt từ bên phải
+   Mở/đóng bằng EC.drawer.open('id') / EC.drawer.close('id')
+   ========================================================================== */
+
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim);
+  animation: fade-in 150ms ease;
+}
+
+.drawer__panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(var(--drawer-width), 100%);
+  height: 100%;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-overlay);
+  animation: slide-in 200ms ease;
+}
+
+.drawer__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-6) 0;
+}
+
+.drawer__title {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 30px;
+  color: var(--color-primary-dark);
+}
+
+.drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-6) var(--space-6);
+}
+
+.drawer__section {
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.drawer__section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.drawer__section-title {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.drawer__footer {
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+}

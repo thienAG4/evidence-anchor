@@ -1,0 +1,52 @@
+/* ==========================================================================
+   Trang Đăng nhập – pages/auth/login.html
+   ========================================================================== */
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8) 30px;
+}
+
+.login-card__logo {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto var(--space-5);
+  object-fit: contain;
+}
+
+.login-card__subtitle {
+  margin-top: var(--space-2);
+  margin-bottom: var(--space-6);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.login-form__remember {
+  margin: var(--space-5) 0;
+}
+
+.login-form__divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.login-form__divider::before,
+.login-form__divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.login-card__footer {
+  margin-top: var(--space-8);
+  font-size: var(--text-md);
+  line-height: 22px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}

@@ -1,0 +1,108 @@
+/* ==========================================================================
+   Button
+   <button class="btn btn--primary">…</button>
+   Biến thể: --primary | --secondary | --outline | --ghost-link
+   Kích thước: (mặc định 44px) | --sm (32px) | --block (rộng 100%)
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color var(--transition), border-color var(--transition), color var(--transition);
+}
+
+/* <label class="btn"> bọc <input type="file"> ẩn: vẫn hiện focus ring khi dùng bàn phím */
+label.btn {
+  cursor: pointer;
+}
+
+label.btn:focus-within {
+  outline: 3px solid var(--color-accent-gold);
+  outline-offset: 2px;
+}
+
+.btn--primary {
+  background-color: var(--color-primary);
+  color: var(--color-text-on-dark);
+  font-weight: 600;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background-color: var(--color-primary-dark);
+}
+
+.btn--secondary {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background-color: var(--color-background);
+}
+
+.btn--outline {
+  background-color: var(--color-surface);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.btn--outline:hover:not(:disabled) {
+  background-color: var(--status-mismatch-bg);
+}
+
+/* Nút dạng chữ, ví dụ "Đổi file" */
+.btn--link {
+  height: auto;
+  padding: 0;
+  border: 0;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+}
+
+.btn--link:hover {
+  text-decoration: underline;
+}
+
+.btn--sm {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-md);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn:disabled {
+  background-color: var(--color-disabled-bg);
+  border-color: var(--color-disabled-border);
+  color: var(--color-disabled-text);
+}
+
+/* Nút chỉ có icon (đóng modal, xóa file…) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: color var(--transition), background-color var(--transition);
+}
+
+.icon-btn:hover {
+  color: var(--color-primary);
+  background-color: var(--color-background);
+}

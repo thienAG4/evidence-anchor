@@ -1,0 +1,92 @@
+/* ==========================================================================
+   Data table
+   <div class="table-wrapper"><table class="table">…</table></div>
+   ========================================================================== */
+
+.table-wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.table {
+  text-align: left;
+  font-size: var(--text-base);
+}
+
+.table th {
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-surface-muted);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.table--plain-head th {
+  background: var(--color-surface);
+  font-size: var(--text-base);
+}
+
+.table td {
+  height: var(--table-row-height);
+  padding: var(--space-3) var(--space-6);
+  vertical-align: middle;
+}
+
+.table tbody tr + tr td {
+  border-top: 1px solid var(--color-border);
+}
+
+.table--hover tbody tr {
+  cursor: pointer;
+  transition: background-color var(--transition);
+}
+
+.table--hover tbody tr:hover {
+  background: var(--color-row-hover);
+}
+
+.table--compact th,
+.table--compact td {
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
+.table .is-center { text-align: center; }
+.table .is-right  { text-align: right; }
+.table .is-nowrap { white-space: nowrap; }
+
+/* Cột mũi tên ">" cuối hàng */
+.table__chevron {
+  width: 48px;
+  color: var(--color-text-muted);
+}
+
+.table__chevron .lucide {
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+}
+
+/* Ô có dòng phụ bên dưới (mã file + mô tả) */
+.table__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.table-caption {
+  margin-top: var(--space-3);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.table-empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-secondary);
+}

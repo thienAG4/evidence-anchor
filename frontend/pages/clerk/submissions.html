@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Các lần lưu chứng cứ – EvidenceChain</title>
+  <link rel="icon" type="image/png" href="../../assets/images/logo.png">
+  <link rel="stylesheet" href="../../assets/css/main.css">
+  <link rel="stylesheet" href="../../assets/css/pages/submissions.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script defer src="../../assets/js/core/app.js"></script>
+  <script defer src="../../assets/js/config/navigation.js"></script>
+  <script defer src="../../assets/js/config/status.js"></script>
+  <script defer src="../../assets/js/data/mock-data.js"></script>
+  <script defer src="../../assets/js/core/ui.js"></script>
+  <script defer src="../../assets/js/components/app-header.js"></script>
+  <script defer src="../../assets/js/components/app-sidebar.js"></script>
+  <script defer src="../../assets/js/components/app-footer.js"></script>
+  <script defer src="../../assets/js/components/date-range-picker.js"></script>
+  <script defer src="../../assets/js/pages/submissions.js"></script>
+</head>
+<body class="app">
+  <app-header role="clerk"></app-header>
+
+  <div class="app-body">
+    <app-sidebar role="clerk" active="submissions"></app-sidebar>
+
+    <main class="app-main">
+      <div class="page">
+        <header class="page-header">
+          <h1 class="page-title">Lần lưu chứng cứ</h1>
+          <p class="page-subtitle">Danh sách lần lưu chứng cứ do đương sự thực hiện. Nội dung file không được lưu trên hệ thống.</p>
+        </header>
+
+        <!-- Bộ lọc -->
+        <div class="toolbar" role="search">
+          <div class="input-group toolbar__search">
+            <i data-lucide="search" class="input-group__icon"></i>
+            <input id="filter-search" class="input-group__control" type="search"
+                   placeholder="Tìm theo mã biên nhận hoặc tên đương sự" aria-label="Tìm kiếm">
+          </div>
+          <div class="input-group toolbar__filter">
+            <select id="filter-status" class="input-group__control" aria-label="Lọc theo trạng thái">
+              <option value="">Trạng thái: Tất cả</option>
+              <option value="recorded">Đã ghi nhận</option>
+              <option value="locked">Đã khóa</option>
+              <option value="checked">Tòa đã kiểm tra</option>
+            </select>
+            <i data-lucide="chevron-down" class="input-group__trailing"></i>
+          </div>
+          <date-range-picker id="filter-date" class="toolbar__filter toolbar__filter--wide"
+                             placeholder="Từ ngày – Đến ngày"></date-range-picker>
+        </div>
+
+        <!-- Bảng danh sách -->
+        <div class="table-wrapper">
+          <table class="table table--compact table--hover">
+            <thead>
+              <tr>
+                <th>Mã biên nhận</th>
+                <th>Đương sự</th>
+                <th class="is-center">Số file</th>
+                <th>Ghi nhận lúc</th>
+                <th>Trạng thái</th>
+                <th>Thao tác</th>
+                <th class="table__chevron"><span class="sr-only">Xem nhanh</span></th>
+              </tr>
+            </thead>
+            <tbody id="submission-table-body"></tbody>
+          </table>
+        </div>
+        <p id="submission-count" class="table-caption"></p>
+      </div>
+    </main>
+  </div>
+
+  <app-footer></app-footer>
+
+  <!-- Drawer: xem nhanh một lần lưu chứng cứ (nội dung do JS điền) -->
+  <div id="drawer-submission" class="drawer" hidden>
+    <aside class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <header class="drawer__header">
+        <div>
+          <h2 id="drawer-title" class="drawer__title"></h2>
+          <div id="drawer-status" class="submission-drawer__status"></div>
+        </div>
+        <button type="button" class="icon-btn" data-close aria-label="Đóng">
+          <i data-lucide="x"></i>
+        </button>
+      </header>
+      <div id="drawer-body" class="drawer__body"></div>
+      <footer class="drawer__footer">
+        <a id="drawer-verify" class="btn btn--primary btn--block" href="#">
+          <i data-lucide="arrow-left-right"></i>Đối chiếu
+        </a>
+      </footer>
+    </aside>
+  </div>
+</body>
+</html>

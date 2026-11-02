@@ -1,0 +1,71 @@
+/* ==========================================================================
+   Typography & tiện ích chữ
+   ========================================================================== */
+
+.page-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  color: var(--color-primary-dark);
+}
+
+.page-subtitle {
+  margin-top: var(--space-1);
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
+.section-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  line-height: 26px;
+  color: var(--color-text);
+}
+
+.section-subtitle {
+  margin-top: 2px;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.text-secondary { color: var(--color-text-secondary); }
+.text-muted     { color: var(--color-text-muted); }
+.text-primary   { color: var(--color-primary); }
+.text-success   { color: var(--status-match-text); }
+.text-sm        { font-size: var(--text-md); }
+.text-xs        { font-size: var(--text-xs); }
+.text-strong    { font-weight: 600; }
+.text-italic    { font-style: italic; }
+
+/* Mã biên nhận / mã file: chữ đậm, giãn nhẹ cho dễ đọc */
+.code-text {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Hash SHA-256 và dữ liệu kỹ thuật */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.link {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Link kèm icon mũi tên: "Xem chi tiết >" , "< Quay lại" */
+.link--arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}

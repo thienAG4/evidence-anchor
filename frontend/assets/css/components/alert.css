@@ -1,0 +1,70 @@
+/* ==========================================================================
+   Alert – hộp lưu ý / thông báo
+   Biến thể: --note (viền trái vàng) | --info | --success | --danger
+   ========================================================================== */
+
+.alert {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-muted);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.alert > .lucide {
+  margin-top: 2px;
+  color: var(--color-accent-gold);
+}
+
+.alert__title {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.alert__text + .alert__text {
+  margin-top: var(--space-1);
+}
+
+/* Lưu ý quan trọng: viền trái vàng 3px */
+.alert--note {
+  border-left: 3px solid var(--color-accent-gold);
+  background: #fffbf2;
+}
+
+.alert--note .alert__title--danger {
+  color: var(--color-primary);
+}
+
+.alert--info {
+  background: #fffbef;
+  border-color: #f2e3b8;
+}
+
+.alert--success {
+  align-items: center;
+  background: var(--status-match-bg);
+  border-color: #b9dcc2;
+  color: var(--status-match-text);
+  font-size: var(--text-base);
+  font-weight: 500;
+}
+
+.alert--success > .lucide {
+  margin-top: 0;
+  color: var(--status-match-text);
+}
+
+.alert--danger {
+  background: var(--status-mismatch-bg);
+  border-color: #f2c4c4;
+  color: var(--status-mismatch-text);
+}
+
+.alert--danger > .lucide {
+  color: var(--status-mismatch-text);
+}
