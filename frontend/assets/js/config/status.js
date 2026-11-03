@@ -14,16 +14,19 @@
     checked: { label: 'Tòa đã kiểm tra', tone: 'match', icon: 'check', hint: 'Xem kết quả từng file trong chi tiết' },
 
     // ---- Kết quả từng file (góc nhìn đương sự) ----
-    match: { label: 'Trùng khớp', tone: 'match', icon: 'check', hint: 'File không thay đổi' },
-    mismatch: { label: 'Không khớp', tone: 'mismatch', icon: 'circle-x', hint: 'File đã bị thay đổi' },
+    // Nhãn theo backlog (mục 2.3 brief): KHÔNG THAY ĐỔI / ĐÃ THAY ĐỔI / KHÔNG CÓ MỐC ĐỂ SO.
+    // Hint chỉ MÔ TẢ kết quả so sánh, không KẾT LUẬN hộ (thật/giả/ai sửa là việc của Tòa).
+    match: { label: 'Khớp bản lưu chứng', tone: 'match', icon: 'check', hint: 'Không phát hiện khác biệt so với bản đã lưu chứng' },
+    mismatch: { label: 'Khác bản lưu chứng', tone: 'mismatch', icon: 'circle-x', hint: 'Có khác biệt so với bản đã lưu chứng' },
     checking: { label: 'Đang kiểm tra', tone: 'pending', icon: 'clock', hint: 'Tòa đang đối chiếu' },
     unchecked: { label: 'Chưa kiểm tra', tone: 'empty', icon: 'minus', hint: 'Tòa chưa đối chiếu' },
+    noBaseline: { label: 'Không có mốc để so', tone: 'empty', icon: 'file-search', hint: 'Không có lần lưu chứng cứ nào để đối chiếu' },
 
     // ---- Kết quả đối chiếu (góc nhìn thư ký) ----
     notCompared: { label: 'Chưa đối chiếu', tone: 'empty', icon: 'minus' },
     awaitingCompare: { label: 'Chưa đối chiếu', tone: 'empty', icon: 'clock' },
-    savedMatch: { label: 'Trùng khớp', tone: 'match', icon: 'check' },
-    savedMismatch: { label: 'Không khớp', tone: 'mismatch', icon: 'circle-x' },
+    savedMatch: { label: 'Khớp bản lưu chứng', tone: 'match', icon: 'check' },
+    savedMismatch: { label: 'Khác bản lưu chứng', tone: 'mismatch', icon: 'circle-x' },
   };
 
   /**

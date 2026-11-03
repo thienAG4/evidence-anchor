@@ -11,23 +11,23 @@
     {
       id: 'TX-0001', litigant: 'Nguyễn Thu Minh', status: 'checked',
       recordedAt: '14:20 05/03/2026', lockedAt: '23:59 05/03/2026',
-      files: [{ name: 'don_khoi_kien.pdf', result: 'match' }],
+      files: [{ name: 'don_khoi_kien.pdf', result: 'match', checkedAt: '09:00 06/03/2026' }],
     },
     {
       id: 'TX-0003', litigant: 'Nguyễn Thu Minh', status: 'checked',
       recordedAt: '09:15 06/03/2026', lockedAt: '23:59 06/03/2026',
       files: [
-        { name: 'tin_nhan_zalo.png', result: 'match' },
-        { name: 'video_cuoc_hop.mp4', result: 'mismatch' },
+        { name: 'tin_nhan_zalo.png', result: 'match', checkedAt: '10:30 07/03/2026' },
+        { name: 'video_cuoc_hop.mp4', result: 'mismatch', checkedAt: '10:32 07/03/2026' },
         { name: 'hop_dong_goc.pdf', result: 'checking' },
-        { name: 'ghi_am_lan.m4a', result: 'match' },
+        { name: 'ghi_am_lan.m4a', result: 'match', checkedAt: '10:35 07/03/2026' },
         { name: 'sao_ke.pdf', result: 'unchecked' },
       ],
     },
     {
       id: 'TX-0005', litigant: 'Trần Thị Lan', status: 'checked',
       recordedAt: '16:40 12/08/2026', lockedAt: '23:59 12/08/2026',
-      files: [{ name: 'giay_vay_tien.jpg', result: 'match' }],
+      files: [{ name: 'giay_vay_tien.jpg', result: 'match', checkedAt: '09:10 13/08/2026' }],
     },
     {
       id: 'TX-0007', litigant: 'Nguyễn Thu Minh', status: 'locked',

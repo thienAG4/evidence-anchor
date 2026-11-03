@@ -59,6 +59,15 @@
     document.querySelectorAll('[data-field="receiptId"]').forEach((el) => { el.textContent = receipt.id; });
     document.querySelectorAll('[data-field="recordedAt"]').forEach((el) => { el.textContent = receipt.recordedAt; });
     document.querySelectorAll('[data-field="lockedAt"]').forEach((el) => { el.textContent = receipt.lockedAt; });
+
+    // Khôi phục banner "đã lưu kết quả" nếu lần đối chiếu trước đã lưu (giữ được sau khi F5,
+    // vì mốc kiểm tra giờ nằm trong dữ liệu — không còn là biến tạm riêng của lần tải trang này).
+    const lastCheckedAt = rows.filter((r) => r.locked && r.file.checkedAt).map((r) => r.file.checkedAt).pop();
+    if (lastCheckedAt) {
+      savedAt = lastCheckedAt;
+      document.querySelector('[data-field="savedAt"]').textContent = savedAt;
+    }
+
     render();
   }
 
@@ -100,8 +109,13 @@
 
   function renderResultCell(row) {
     if (row.locked) {
-      return `<span class="verify-result">${EC.badge(row.result === 'match' ? 'savedMatch' : 'savedMismatch')}
-        <i data-lucide="lock" class="verify-result__lock" aria-label="Đã khóa"></i></span>`;
+      const time = row.file.checkedAt
+        ? `<span class="verify-result__time">Kiểm tra lúc ${EC.escape(row.file.checkedAt)}</span>` : '';
+      return `<div class="verify-result-wrap">
+          <span class="verify-result">${EC.badge(row.result === 'match' ? 'savedMatch' : 'savedMismatch')}
+            <i data-lucide="lock" class="verify-result__lock" aria-label="Đã khóa"></i></span>
+          ${time}
+        </div>`;
     }
     return EC.badge(row.result || 'notCompared');
   }
@@ -120,7 +134,7 @@
       alertBox.innerHTML = `
         <i data-lucide="info" class="icon-sm"></i>
         <div>
-          <p class="alert__title alert__title--danger">Có ${s.mismatch} file khác bản đã lưu</p>
+          <p class="alert__title alert__title--danger">Có ${s.mismatch} file khác bản lưu chứng</p>
           <p class="alert__text">Hệ thống chỉ ghi nhận kết quả so sánh. Việc chứng cứ có được sử dụng hay không do Thẩm phán và Hội đồng xét xử quyết định.</p>
         </div>`;
     } else {
@@ -128,8 +142,8 @@
       alertBox.innerHTML = `
         <i data-lucide="info" class="icon-sm"></i>
         <div>
-          <p class="alert__title text-success">Các file đã đối chiếu đều khớp với bản lưu chứng</p>
-          <p class="alert__text">Kết quả chỉ cho biết file có bị thay đổi hay không. Giá trị chứng minh do Tòa án xem xét.</p>
+          <p class="alert__title text-success">Các file đã đối chiếu đều khớp bản lưu chứng</p>
+          <p class="alert__text">Kết quả chỉ cho biết file hiện tại có khớp với bản đã lưu chứng hay không. Giá trị chứng minh do Tòa án xem xét.</p>
         </div>`;
     }
   }
@@ -217,15 +231,17 @@
   }
 
   function saveResults() {
+    const now = EC.nowText();
     rows.forEach((row) => {
       if (row.result && !row.locked) {
         row.locked = true;
         row.file.result = row.result; // cập nhật dữ liệu → đương sự thấy kết quả
+        row.file.checkedAt = now; // ghi vào dữ liệu (không chỉ biến tạm) → còn lại sau khi tải lại trang
       }
     });
     receipt.status = 'checked';
     EC.data.saveReceipt(receipt);
-    savedAt = EC.nowText();
+    savedAt = now;
     document.querySelector('[data-field="savedAt"]').textContent = savedAt;
     EC.modal.close('modal-confirm-save');
     render();
@@ -245,7 +261,9 @@
     return;
   }
   if (!found) {
-    showUnavailable(`Không tìm thấy lần lưu chứng cứ ${id}.`);
+    // Không có mốc để so: hệ thống không có lần lưu chứng cứ (sự kiện A) nào ứng với mã này,
+    // nên không có gì để đối chiếu — không phải lỗi, chỉ là chưa từng được lưu chứng.
+    showUnavailable(`Không có mốc để so: hệ thống không có lần lưu chứng cứ nào với mã ${id}.`);
     return;
   }
   if (found.status === 'recorded') {

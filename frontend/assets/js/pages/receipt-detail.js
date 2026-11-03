@@ -72,6 +72,7 @@
       <td class="code-text">${EC.escape(f.code)}</td>
       <td>${EC.fileNameHtml(f.name)}</td>
       <td>${EC.badge(f.result, { withHint: true })}</td>
+      <td class="text-secondary">${f.checkedAt ? EC.escape(f.checkedAt) : '—'}</td>
     </tr>`).join('');
 
   // Chỉ hiện chú thích khi Tòa đã bắt đầu kiểm tra
