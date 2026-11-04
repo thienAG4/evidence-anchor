@@ -271,7 +271,7 @@
     showUnavailable(`Không có mốc để so: không có lần lưu chứng cứ nào với mã ${id} thuộc đương sự trong vụ án bạn phụ trách.`);
     return;
   }
-  if (found.status === 'recorded') {
+  if (!EC.isLocked(found)) {
     showUnavailable(`Lần lưu chứng cứ ${found.id} chưa khóa (chưa neo lên chuỗi). Chỉ đối chiếu được sau khi đã khóa.`);
     return;
   }

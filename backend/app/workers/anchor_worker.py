@@ -1,4 +1,5 @@
 """Tiến trình riêng: per_submission neo từng lần nộp chưa neo; thử lại khi FAILED. (daily: chưa làm.)
+Mỗi vòng còn ghi AnchorFinality cho lần neo có block đã chốt (finalized) -> biên nhận hoàn chỉnh.
 
 Chạy (từ thư mục backend/): ..\\venv\\Scripts\\python.exe -m app.workers.anchor_worker
 
@@ -10,19 +11,26 @@ import threading
 
 from app.config import settings
 from app.db.session import SessionLocal
-from app.services.anchor_service import anchor_submission, submissions_to_anchor
+from app.core.chain_reader import ChainReadError
+from app.services.anchor_service import anchor_submission, record_finality, submissions_to_anchor
 
 logger = logging.getLogger("anchor_worker")
 
 
 def run_once(chain) -> int:
-    """Neo các lần nộp đang chờ. Trả về số lần đã thử."""
+    """Neo các lần nộp đang chờ, rồi ghi chốt cho lần neo có block đã finalized. Trả về số lần đã thử neo."""
     count = 0
     with SessionLocal() as db:
         for submission in submissions_to_anchor(db):
             anchor = anchor_submission(db, chain, submission)
             logger.info("Neo %s: %s %s", submission.receipt_code, anchor.result.value, anchor.tx_hash or anchor.error)
             count += 1
+        try:
+            for anchor, finality in record_finality(db):
+                logger.info("Đã chốt %s ở block %s (block chốt %s)", anchor.tx_hash,
+                            finality.tx_block_number, finality.finalized_block_number)
+        except ChainReadError as exc:
+            logger.warning("Chưa kiểm được block chốt: %s", exc)
     return count
 
 

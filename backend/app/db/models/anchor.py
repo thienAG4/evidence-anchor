@@ -25,6 +25,20 @@ class Anchor(UUIDPk, Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
+class AnchorFinality(UUIDPk, Base):
+    """Ghi thêm khi block chứa giao dịch neo đã chốt (finalized) — tài liệu kỹ thuật 7.1.
+
+    Không sửa dòng Anchor: có dòng này thì lần neo đó là FINALIZED, chưa có thì mới CONFIRMED.
+    """
+    __tablename__ = "anchor_finality"
+
+    anchor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("anchor.id"), nullable=False, unique=True)
+    tx_block_number: Mapped[int] = mapped_column(BigInteger, nullable=False)  # block chứa giao dịch lúc chốt
+    finalized_block_number: Mapped[int] = mapped_column(BigInteger, nullable=False)  # block chốt mới nhất lúc kiểm
+    created_at: Mapped[datetime] = created_at_column()
+
+
 class AnchorLeaf(UUIDPk, Base):
     __tablename__ = "anchor_leaf"
     __table_args__ = (UniqueConstraint("anchor_id", "submission_id"),)

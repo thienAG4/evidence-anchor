@@ -6,22 +6,30 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core import chain_reader
 from app.db.enums import AnchorMode, AnchorResult, AnchorStatus
-from app.db.models import Anchor, AnchorLeaf, Submission
+from app.db.models import Anchor, AnchorFinality, AnchorLeaf, Submission
 
 logger = logging.getLogger(__name__)
 EXPLORER_TX_URL = "https://sepolia.etherscan.io/tx/"
 
 
 def anchor_state(db: Session, submission_id) -> tuple[AnchorStatus, Anchor | None, AnchorLeaf | None]:
-    """ANCHORED nếu có lần neo CONFIRMED; ANCHOR_FAILED nếu mọi lần neo đều lỗi; chưa có lần nào: PENDING_ANCHOR."""
+    """ANCHORED nếu lần neo CONFIRMED đã có AnchorFinality (block đã chốt); có CONFIRMED mà chưa chốt:
+    ANCHORED_UNFINALIZED; mọi lần neo đều lỗi: ANCHOR_FAILED; chưa có lần nào: PENDING_ANCHOR."""
     rows = db.execute(
         select(AnchorLeaf, Anchor).join(Anchor, AnchorLeaf.anchor_id == Anchor.id)
         .where(AnchorLeaf.submission_id == submission_id).order_by(Anchor.created_at.desc())
     ).all()
-    for leaf, anchor in rows:
-        if anchor.result == AnchorResult.CONFIRMED:
-            return AnchorStatus.ANCHORED, anchor, leaf
+    confirmed = [(leaf, anchor) for leaf, anchor in rows if anchor.result == AnchorResult.CONFIRMED]
+    if confirmed:
+        finalized = set(db.scalars(select(AnchorFinality.anchor_id)
+                                   .where(AnchorFinality.anchor_id.in_([a.id for _, a in confirmed]))))
+        for leaf, anchor in confirmed:
+            if anchor.id in finalized:
+                return AnchorStatus.ANCHORED, anchor, leaf
+        leaf, anchor = confirmed[0]
+        return AnchorStatus.ANCHORED_UNFINALIZED, anchor, leaf
     if rows:
         return AnchorStatus.ANCHOR_FAILED, rows[0][1], rows[0][0]
     return AnchorStatus.PENDING_ANCHOR, None, None
@@ -72,3 +80,40 @@ def anchor_submission(db: Session, chain, submission: Submission) -> Anchor:
     db.add(AnchorLeaf(anchor_id=anchor.id, submission_id=submission.id, leaf_index=0, merkle_proof=[]))
     db.commit()
     return anchor
+
+
+def anchors_awaiting_finality(db: Session) -> list[Anchor]:
+    """Lần neo CONFIRMED chưa có AnchorFinality, cũ nhất trước."""
+    finalized = select(AnchorFinality.anchor_id)
+    return list(db.scalars(
+        select(Anchor).where(Anchor.result == AnchorResult.CONFIRMED, Anchor.id.not_in(finalized))
+        .order_by(Anchor.block_number)
+    ))
+
+
+def record_finality(db: Session, reader=chain_reader) -> list[tuple[Anchor, AnchorFinality]]:
+    """Ghi AnchorFinality cho lần neo có block đã chốt (7.1). Đọc thẳng từ chuỗi, không tin số block đã lưu:
+    giao dịch phải còn, thành công, và nằm ở block <= block finalized. Trả về các dòng vừa ghi."""
+    pending = anchors_awaiting_finality(db)
+    if not pending:
+        return []
+    finalized_block = reader.get_finalized_block_number()
+    written = []
+    for anchor in pending:
+        if anchor.block_number is not None and anchor.block_number > finalized_block:
+            continue  # block đã lưu còn mới hơn block chốt: chưa cần đọc giao dịch, vòng sau kiểm lại
+        tx = reader.get_anchor_tx(anchor.tx_hash)
+        if tx is None or not tx["success"] or tx["blockNumber"] is None:
+            logger.warning("Giao dịch neo %s không còn hoặc không thành công trên chuỗi, chưa ghi chốt", anchor.tx_hash)
+            continue
+        if tx["blockNumber"] > finalized_block:
+            continue
+        if tx["blockNumber"] != anchor.block_number:
+            logger.warning("Giao dịch neo %s đã chuyển block %s -> %s (block bị xếp lại)",
+                           anchor.tx_hash, anchor.block_number, tx["blockNumber"])
+        finality = AnchorFinality(anchor_id=anchor.id, tx_block_number=tx["blockNumber"],
+                                  finalized_block_number=finalized_block)
+        db.add(finality)
+        written.append((anchor, finality))
+    db.commit()
+    return written

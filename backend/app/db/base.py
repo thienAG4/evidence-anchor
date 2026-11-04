@@ -21,6 +21,6 @@ def created_at_column() -> Mapped[datetime]:
 
 # Bảng chỉ ghi thêm (F6): migration REVOKE UPDATE, DELETE trên các bảng này cho tài khoản ứng dụng.
 APPEND_ONLY_TABLES = (
-    "submission", "file_hash", "anchor", "anchor_leaf", "integrity_check",
+    "submission", "file_hash", "anchor", "anchor_finality", "anchor_leaf", "integrity_check",
     "appraisal_step", "dossier", "dossier_item", "access_log",
 )

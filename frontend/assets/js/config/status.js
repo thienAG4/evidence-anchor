@@ -9,7 +9,8 @@
 
   EC.STATUS = {
     // ---- Trạng thái một lần lưu chứng cứ (biên nhận) ----
-    recorded: { label: 'Đã ghi nhận', tone: 'pending', icon: 'clock', hint: 'Sẽ khóa lúc 23:59 cùng ngày' },
+    recorded: { label: 'Đã ghi nhận', tone: 'pending', icon: 'clock', hint: 'Chờ neo lên blockchain' },
+    anchoring: { label: 'Đã neo, chờ chốt', tone: 'pending', icon: 'hourglass', hint: 'Đã ghi lên blockchain, chờ mạng chốt (khoảng 13 phút) mới khóa hẳn' },
     locked: { label: 'Đã khóa', tone: 'neutral', icon: 'lock', hint: 'Không ai sửa được, kể cả Tòa. Chờ Tòa kiểm tra' },
     checked: { label: 'Tòa đã kiểm tra', tone: 'match', icon: 'check', hint: 'Xem kết quả từng file trong chi tiết' },
 
@@ -28,6 +29,13 @@
     savedMatch: { label: 'Khớp bản lưu chứng', tone: 'match', icon: 'check' },
     savedMismatch: { label: 'Khác bản lưu chứng', tone: 'mismatch', icon: 'circle-x' },
   };
+
+  /** Biên nhận đã khóa hẳn (block chứa giao dịch neo đã chốt) thì mới đối chiếu được. */
+  EC.isLocked = (receipt) => receipt.status === 'locked' || receipt.status === 'checked';
+
+  /** Mô tả bước khóa khi chưa khóa hẳn. */
+  EC.lockPendingText = (receipt) => (receipt.status === 'anchoring'
+    ? 'Đã neo lên blockchain, chờ chốt (khoảng 13 phút)' : 'Đang chờ neo lên blockchain');
 
   /**
    * Tạo HTML badge.

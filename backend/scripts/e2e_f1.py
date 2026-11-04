@@ -161,7 +161,10 @@ def main():
         receipt_body = api.call("GET", f"/receipts/{code}", party).json()
     status = receipt_body["status"]
     if status == "ANCHORED":
-        step("Biên nhận chuyển sang Đã neo", True, receipt_body["anchor"]["explorerUrl"])
+        step("Biên nhận chuyển sang Đã neo (block đã chốt)", True, receipt_body["anchor"]["explorerUrl"])
+    elif status == "ANCHORED_UNFINALIZED":
+        step("Biên nhận chuyển sang Đã neo", True, "block chưa chốt (~13 phút): biên nhận chưa hoàn chỉnh")
+        step("Chưa chốt -> biên nhận chưa có phần anchor", receipt_body["anchor"] is None)
     elif status == "ANCHOR_FAILED":
         step("Biên nhận chuyển sang Đã neo", False, "neo lỗi — xem log worker (ví hết Sepolia ETH?)")
     else:

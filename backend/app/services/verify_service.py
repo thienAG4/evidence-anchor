@@ -6,7 +6,7 @@ from collections import Counter
 from typing import BinaryIO
 
 from app.config import settings
-from app.core.chain_reader import ChainReadError, get_anchor_tx
+from app.core.chain_reader import ChainReadError, get_anchor_tx, get_finalized_block_number
 from app.core.hashing import BUNDLE_SCHEME, LOT_SCHEME, compute_bundle, compute_lot_bundle, hash_stream, leaf_hash
 from app.core.merkle import verify_proof
 from app.core import receipt as receipt_signing
@@ -63,9 +63,14 @@ def verify(document: dict, streams: list[BinaryIO]) -> dict:
               verify_proof(bundle["bundleHash"], anchor["merkleProof"], anchor["rootHash"]))
         try:
             tx = get_anchor_tx(anchor["txHash"])
+            finalized_block = get_finalized_block_number()
         except ChainReadError as exc:
             raise AppError(502, ErrorCode.CHAIN_UNAVAILABLE, str(exc)) from None
         check("Giao dịch neo tồn tại và thành công", tx is not None and tx["success"])
+        tx_block = tx["blockNumber"] if tx else None
+        check("Block chứa giao dịch đã chốt (finalized)", tx_block is not None and tx_block <= finalized_block,
+              None if tx_block is not None and tx_block <= finalized_block
+              else f"block {tx_block}, block chốt mới nhất {finalized_block}: chờ khoảng 13 phút rồi kiểm lại")
         check("Input Data của giao dịch = gốc đã neo", tx is not None and tx["input"] == anchor["rootHash"])
         wallet = (settings.anchor_wallet_address or "").lower()
         if not wallet:

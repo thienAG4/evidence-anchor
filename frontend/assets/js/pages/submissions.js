@@ -27,7 +27,7 @@
   const countText = document.getElementById('submission-count');
 
   const verifyUrl = (id) => `verify-evidence.html?id=${encodeURIComponent(id)}`;
-  const canVerify = (r) => r.status !== 'recorded';
+  const canVerify = (r) => EC.isLocked(r);
 
   // ---------------------------------------------------------------- Lọc
   function getFilteredReceipts() {
@@ -81,14 +81,14 @@
 
   // ---------------------------------------------------------------- Drawer
   function buildTimeline(r) {
-    const isLocked = r.status !== 'recorded';
+    const isLocked = EC.isLocked(r);
     const compared = r.files.filter((f) => f.result === 'match' || f.result === 'mismatch').length;
 
     const items = [
       { title: 'Đã ghi nhận', desc: `${r.recordedAt} · Hệ thống của Tòa ghi nhận`, done: true },
       {
         title: 'Đã khóa, không thể sửa',
-        desc: isLocked ? `${r.lockedAt} · Từ đây không ai sửa được, kể cả Tòa` : `Sẽ khóa lúc ${r.lockedAt}`,
+        desc: isLocked ? `${r.lockedAt} · Từ đây không ai sửa được, kể cả Tòa` : EC.lockPendingText(r),
         done: isLocked,
       },
       {
