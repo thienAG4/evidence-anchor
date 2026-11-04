@@ -42,7 +42,7 @@ Ha, Hb, Hc (sắp theo Hi giảm dần) ─► Habc = SHA256(Ha ‖ Hb ‖ Hc)
 | Bundle | `Bundle = SHA256(Habc ‖ SHA256(tB))` | `tB` = lúc Habc tính xong |
 
 Ký hiệu `‖` là **nối 32 byte nhị phân** của từng hash (không phải nối chuỗi hex). Vì mỗi hash dài cố định 32 byte,
-cách ghép không thể bị hiểu nhầm ranh giới. Toàn bộ nằm trong [`hashutils.py`](hashutils.py).
+cách ghép không thể bị hiểu nhầm ranh giới. Toàn bộ nằm trong [`backend/app/core/hashing.py`](backend/app/core/hashing.py).
 
 > Vì sao không dùng XOR / cộng / nhân để gộp? Các phép này không phải hàm băm: XOR làm 2 file trùng nhau tự triệt tiêu
 > (H ⊕ H = 0) và có thể bị tấn công tìm bộ file khác cho cùng kết quả. Bước gộp cuối luôn là SHA-256.
@@ -56,7 +56,7 @@ Không dùng smart contract. Mỗi hash được ghi bằng **1 giao dịch 0 ET
 - N giao dịch, mỗi giao dịch chứa **Hi** (hash nội dung) của một file
 
 Nếu một giao dịch file bị lỗi sau khi bundle đã lên chain, biên nhận vẫn được tạo và ghi lỗi tại file đó (không mất
-dấu bundle đã trả phí). Xem [`chain.py`](chain.py).
+dấu bundle đã trả phí). Xem [`backend/app/core/chain.py`](backend/app/core/chain.py).
 
 ### 1.4. Về thời gian
 
@@ -104,31 +104,66 @@ Mỗi lần tạo biên nhận thành công, một dòng tóm tắt được ghi
 1. Hash lại từng file gốc, so với `fileHash` trong biên nhận (so theo **hash**, đổi tên file không ảnh hưởng).
 2. Từ `fileHash` + `hashedAt` + `bundledAt` trong biên nhận, tính lại `Ha…`, `habc`, `bundleHash` theo mục 1.2 — phải khớp.
    Nếu ai sửa thời gian hay hash trong biên nhận, bước này sẽ sai.
-3. Mở `explorerUrl` trên Etherscan: giao dịch thành công, gửi từ `anchoredBy`, và **Input Data** = `0x` + hash tương ứng.
+3. Mở `explorerUrl` trên Etherscan: giao dịch thành công, gửi từ **ví của hệ thống** (đối chiếu với địa chỉ ví công bố,
+   không chỉ tin trường `anchoredBy` trong biên nhận), và **Input Data** = `0x` + hash tương ứng.
 
 ---
 
 ## 4. Cấu trúc dự án
 
 ```
-EvidenceChain/
-├── hashutils.py      # Hash file/timestamp, gộp bundle theo sơ đồ
-├── chain.py          # Ghi hash lên Sepolia, kiểm tra giao dịch
-├── receipt.py        # Quy trình tạo + kiểm tra biên nhận
-├── history.py        # Lịch sử biên nhận (history.json)
-├── main.py           # Chạy thử bằng dòng lệnh
-├── frontend/app.py   # Giao diện Streamlit: Tạo biên nhận / Kiểm tra tệp / Lịch sử
-├── requirements.txt
-└── render.yaml       # Cấu hình deploy lên Render
+evidence-anchor/
+├── backend/
+│   ├── app/                              # FastAPI
+│   │   ├── main.py                       # tạo app, gắn router
+│   │   ├── config.py                     # đọc .env
+│   │   ├── labels.py                     # nhãn hiển thị (KHỚP/KHÁC...), trạng thái neo
+│   │   ├── core/
+│   │   │   ├── hashing.py                # Hash file/timestamp, bundle per-file-time-v2, hash tổng lô court-lot-v1
+│   │   │   ├── merkle.py                 # Cây Merkle cho neo theo ngày
+│   │   │   ├── signing.py, receipt.py    # Dựng + ký biên nhận (EIP-191)
+│   │   │   ├── security.py               # Mật khẩu (scrypt), JWT
+│   │   │   ├── file_types.py             # Chỉ nhận PDF, ảnh, video, âm thanh (đuôi + nội dung)
+│   │   │   └── chain.py                  # Ghi hash lên Sepolia, kiểm tra giao dịch
+│   │   ├── routers/                      # auth.py, submissions.py
+│   │   ├── services/                     # auth, submission, anchor; legacy_receipt_service.py (bản Streamlit)
+│   │   ├── workers/anchor_worker.py      # Tiến trình riêng: neo lên Sepolia, thử lại khi lỗi
+│   │   ├── dependencies/                 # đăng nhập, phân quyền, kiểm tra file tải lên
+│   │   ├── errors/, schemas/
+│   │   └── db/
+│   │       ├── models/                   # 13 entity, xem docs/entities.md
+│   │       └── history.py                # Lịch sử biên nhận (history.json) — bản Streamlit
+│   ├── alembic/                          # migration (có cấp quyền chỉ ghi thêm — F6)
+│   ├── docker/postgres-init/             # tạo role evidence_app khi dựng DB lần đầu
+│   ├── scripts/
+│   │   ├── seed.py                       # tạo tài khoản + vụ án mẫu để test
+│   │   └── demo_cli.py                   # Chạy thử bằng dòng lệnh (bản Streamlit)
+│   ├── requirements.txt                  # Thư viện cho backend FastAPI
+│   └── .env.example
+├── docs/                                 # proposal, backlog, entities, api; postman/ (collection để test)
+├── frontend/                             # Giao diện HTML/CSS/JS (xem frontend/README.md), backend phục vụ ở :8000
+│   ├── pages/, assets/                   # trang đương sự + thư ký; assets/js/data/api.js gọi API
+│   └── app.py                            # Giao diện Streamlit cũ: Tạo biên nhận / Kiểm tra tệp / Lịch sử
+├── docker-compose.yml                    # PostgreSQL cho máy dev
+├── requirements.txt                      # Để ở gốc vì Render / Streamlit Cloud đọc ở đây
+└── render.yaml                           # Cấu hình deploy lên Render
 ```
+
+API đã có đủ F1–F9 theo `docs/api.md`. Chưa làm: neo theo ngày (`ANCHOR_MODE=daily`), giao diện HTML thay Streamlit.
 
 ## 5. Chạy trên máy
 
+Cần **Python 3.11 trở lên** (`streamlit==1.66.1` không cài được trên 3.10). Trên Windows có nhiều bản Python thì
+dùng `py -3.13` để chọn đúng bản:
+
 ```bash
-python -m venv venv
+py -3.13 -m venv venv            # macOS/Linux: python3 -m venv venv
 venv\Scripts\activate            # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 ```
+
+PowerShell chặn `activate` thì chạy thẳng bằng Python trong venv, không cần kích hoạt:
+`venv\Scripts\python.exe -m streamlit run frontend/app.py`
 
 Tạo file `.env` (đã nằm trong `.gitignore`, **không commit**):
 
@@ -141,8 +176,64 @@ Xin Sepolia ETH miễn phí từ một faucet cho ví test, rồi chạy:
 
 ```bash
 streamlit run frontend/app.py    # giao diện web
-python main.py                   # hoặc chạy thử dòng lệnh, ra receipt.json
+python backend/scripts/demo_cli.py   # hoặc chạy thử dòng lệnh, ra receipt.json
 ```
+
+### 5.1. Backend FastAPI + PostgreSQL
+
+Cần Docker Desktop đang chạy. Mẫu `.env` đầy đủ: [`backend/.env.example`](backend/.env.example)
+(thêm `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `RECEIPT_SIGNING_KEY`, `JWT_SECRET`, `ANCHOR_WALLET_ADDRESS`).
+
+```powershell
+venv\Scripts\python.exe -m pip install -r backend/requirements.txt
+docker compose up -d db                                    # PostgreSQL ở localhost:5432
+cd backend
+..\venv\Scripts\python.exe -m alembic upgrade head         # tạo bảng + quyền
+cd ..
+venv\Scripts\python.exe backend/scripts/seed.py            # tài khoản test
+venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --reload-dir backend
+```
+
+Mở **http://localhost:8000** để vào giao diện (đăng nhập `duongsu / 1234` hoặc `thuky / 5678`),
+http://localhost:8000/docs để xem API. Worker neo chạy ở **terminal khác** (cần `PRIVATE_KEY` có Sepolia ETH):
+
+```powershell
+cd backend
+..\venv\Scripts\python.exe -m app.workers.anchor_worker
+```
+
+Không chạy worker thì biên nhận vẫn tạo được, chỉ ở trạng thái "Chờ neo".
+
+Kiểm thử trọn quy trình lưu chứng (đăng nhập → nộp → tra cứu → chờ neo → tự kiểm tra biên nhận → phát hiện chỉnh sửa):
+
+```powershell
+venv\Scripts\python.exe backend/scripts/e2e_f1.py                     # tự tạo ảnh, ghi âm, PDF mẫu
+venv\Scripts\python.exe backend/scripts/e2e_f1.py anh.jpg ghiam.m4a    # dùng file của bạn
+```
+
+Kiểm thử trọn quy trình tại Tòa (tạo vụ → lưu chứng → nạp lô → KHỚP/KHÁC/KHÔNG CÓ MỐC → xem kết quả → tính lại
+→ giám định → kháng cáo, chốt hồ sơ → phúc thẩm đối chiếu → /verify → nhật ký truy cập). Mỗi lần chạy tạo 1 vụ mới:
+
+```powershell
+venv\Scripts\python.exe backend/scripts/e2e_court.py
+```
+
+Tài khoản có sẵn (sau khi chạy `seed.py`), đăng nhập `POST /auth/login` với `{username, password}`:
+
+| Tên đăng nhập | Mật khẩu | Vai trò |
+|---|---|---|
+| `duongsu` | `1234` | Đương sự (nguyên đơn vụ mẫu) |
+| `thuky` | `5678` | Thư ký TAND Quận 1 |
+| `bidon` | `1234` | Đương sự (bị đơn) — tài khoản phụ để test |
+| `luatsu` | `1234` | Luật sư — tài khoản phụ |
+| `thamphan` | `5678` | Thẩm phán — tài khoản phụ |
+| `thuky.phuctham` | `5678` | Thư ký TAND TP.HCM (phúc thẩm) — tài khoản phụ |
+| `admin` | `5678` | Quản trị — tài khoản phụ |
+
+Tất cả trừ admin và thư ký phúc thẩm đều tham gia vụ mẫu `01/2026/DS-ST`. Không có đăng ký hay OTP; tài khoản
+mới do admin tạo (`POST /admin/users`).
+
+File chứng cứ chỉ nhận **PDF, ảnh, video, âm thanh**; file khác (.exe, .zip, .docx…) bị từ chối kèm thông báo.
 
 ## 6. Deploy lên Render
 
@@ -168,7 +259,7 @@ Lưu ý khi deploy:
      PRIVATE_KEY = "0x...khóa_ví_test"
      ```
 3. Bấm **Deploy**. Streamlit Cloud cài `requirements.txt` ở thư mục gốc; các secret cấp cao nhất được đưa vào
-   biến môi trường nên `chain.py` đọc `os.environ` như khi chạy trên máy.
+   biến môi trường nên `backend/app/core/chain.py` đọc `os.environ` như khi chạy trên máy.
 
 Các lưu ý về ổ đĩa tạm (`history.json`) và việc người khác tiêu ETH của ví test ở mục 6 cũng áp dụng ở đây.
 

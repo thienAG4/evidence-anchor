@@ -5,6 +5,7 @@
 
 (function (EC) {
   'use strict';
+  EC.data.whenReady(() => {
 
   const searchInput = document.getElementById('filter-search');
   const statusSelect = document.getElementById('filter-status');
@@ -36,8 +37,8 @@
     tableBody.innerHTML = rows.length ? rows.map((p) => `
       <tr data-name="${EC.escape(p.name)}">
         <td>${EC.escape(p.name)}</td>
-        <td>${EC.escape(p.idNumber)}</td>
-        <td>${EC.escape(p.phone)}</td>
+        <td>${EC.escape(p.username)}</td>
+        <td>${EC.escape(p.email)}</td>
         <td class="is-center">${p.receiptCount}</td>
         <td class="is-center">${p.fileCount}</td>
         <td class="is-nowrap">${EC.escape(p.lastAt)}</td>
@@ -58,4 +59,5 @@
   });
 
   render();
+  });
 })(window.EC);

@@ -1,14 +1,13 @@
 /* ==========================================================================
    Trang Chi tiết biên nhận – pages/litigant/receipt-detail.html?id=TX-0007
-   Một trang dùng cho mọi biên nhận; nội dung lấy theo ?id= từ EC.data.
-   Ví dụ: ?id=TX-0003 (Tòa đã kiểm tra một phần), ?id=TX-0010 (chưa khóa)
+   Một trang dùng cho mọi biên nhận; nội dung lấy theo ?id= từ API (GET /receipts/{id}, chỉ biên nhận của mình).
    ========================================================================== */
 
 (function (EC) {
   'use strict';
+  EC.data.whenReady(() => {
 
-  const DEFAULT_ID = 'TX-0007';
-  const receipt = EC.data.getReceipt(EC.param('id') || DEFAULT_ID);
+  const receipt = EC.data.getReceipt(EC.param('id') || '');
 
   function setField(name, value) {
     document.querySelectorAll(`[data-field="${name}"]`).forEach((el) => { el.textContent = value; });
@@ -85,4 +84,5 @@
     document.getElementById('receipt-tech-list').innerHTML = hashed.map((f) => `
       <li><span class="code-text">${EC.escape(f.code)}</span><span class="mono" title="${f.hash}">${f.hash}</span></li>`).join('');
   }
+  });
 })(window.EC);

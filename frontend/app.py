@@ -7,12 +7,14 @@ from requests.exceptions import RequestException
 from web3.exceptions import Web3Exception
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+# Đặt backend/ lên đầu sys.path để "app" trỏ tới gói backend/app, không phải file frontend/app.py này.
+BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
-from hashutils import format_vn, hash_stream
-from history import load_history
+from app.core.file_types import ALLOWED_EXTENSIONS, ALLOWED_TEXT, check_file
+from app.core.hashing import format_vn, hash_stream
+from app.db.history import load_history
 
 
 st.set_page_config(
@@ -145,17 +147,22 @@ with submit_tab:
         with st.form("create_receipt_form"):
             uploaded_files = st.file_uploader(
                 "Tệp cần ghi nhận",
+                type=list(ALLOWED_EXTENSIONS),
                 accept_multiple_files=True,
-                help="Tệp được băm tại ứng dụng; nội dung tệp không được tải lên blockchain.",
+                help=f"Chỉ nhận {ALLOWED_TEXT}. Tệp được băm tại ứng dụng; nội dung tệp không được tải lên blockchain.",
             )
             submitted = st.form_submit_button("Tạo biên nhận trên Sepolia  →", use_container_width=True)
 
         if submitted:
+            rejected = [r for r in (check_file(f.name, f) for f in uploaded_files or []) if r]
             if not uploaded_files:
                 st.warning("Vui lòng chọn ít nhất một tệp trước khi tiếp tục.")
+            elif rejected:
+                for reason in rejected:
+                    st.error(reason)
             else:
                 try:
-                    from receipt import create_receipt
+                    from app.services.legacy_receipt_service import create_receipt
 
                     for uploaded_file in uploaded_files:
                         uploaded_file.seek(0)
@@ -230,6 +237,7 @@ with verify_tab:
         )
         evidence_files = st.file_uploader(
             "Tệp cần kiểm tra",
+            type=list(ALLOWED_EXTENSIONS),
             accept_multiple_files=True,
             key="evidence_files_upload",
             help="Chọn lại tất cả tệp đã có trong biên nhận (đổi tên tệp không ảnh hưởng).",
@@ -246,7 +254,7 @@ with verify_tab:
                     evidence_file.seek(0)
                 actual_hashes = [hash_stream(f) for f in evidence_files]
 
-                from receipt import verify_receipt
+                from app.services.legacy_receipt_service import verify_receipt
 
                 with st.spinner("Đang kiểm tra giao dịch trên Sepolia…"):
                     result = verify_receipt(receipt_data, actual_hashes)

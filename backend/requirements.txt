@@ -1,0 +1,15 @@
+# Backend FastAPI (chưa ghim phiên bản — ghim sau khi cài thử được).
+# Bản Streamlit đang deploy vẫn dùng requirements.txt ở thư mục gốc.
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+alembic
+psycopg[binary]
+pydantic-settings
+PyJWT
+streaming-form-data
+web3
+python-dotenv
+pytest
+httpx
