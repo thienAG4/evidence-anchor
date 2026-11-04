@@ -2,7 +2,8 @@
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app.core.receipt import SIGNATURE_ALGORITHM, signing_public_key
+from app.config import settings
+from app.core.receipt import SIGNATURE_ALGORITHM, signing_address
 from app.db.enums import UserRole
 from app.db.models import Submission, User
 from app.db.session import get_db
@@ -77,5 +78,6 @@ def get_receipt(code: str, user: User = Depends(party_only), db: Session = Depen
 
 @router.get("/signing-key")
 def signing_key():
-    """Khóa công khai để tự kiểm chữ ký biên nhận."""
-    return {"algorithm": SIGNATURE_ALGORITHM, "publicKey": signing_public_key()}
+    """Địa chỉ khóa ký để tự kiểm chữ ký biên nhận (EIP-191: khôi phục địa chỉ từ chữ ký rồi so)."""
+    return {"algorithm": SIGNATURE_ALGORITHM, "keyNo": settings.receipt_key_no,
+            "address": settings.receipt_signer_address or signing_address()}

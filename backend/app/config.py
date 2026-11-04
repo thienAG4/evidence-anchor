@@ -14,7 +14,10 @@ class Settings(BaseSettings):
     sepolia_rpc_url: str = "https://ethereum-sepolia-rpc.publicnode.com"
     private_key: str | None = None  # ví TEST gửi giao dịch neo; trống thì worker không neo
     anchor_wallet_address: str | None = None  # địa chỉ ví đó (công khai), để /verify kiểm ai gửi giao dịch
-    receipt_signing_key: str  # Ed25519 seed 32 byte hex, ký biên nhận tạm
+    receipt_signing_key: str  # khóa secp256k1 32 byte hex, ký biên nhận tạm (EIP-191); khác khóa ví neo
+    receipt_key_no: int = 1  # số khóa ký đang dùng (KEYR/KREV công bố, thu hồi theo số này)
+    # Địa chỉ khóa ký đã công bố; /verify so chữ ký với địa chỉ này. Trống thì lấy từ RECEIPT_SIGNING_KEY.
+    receipt_signer_address: str | None = None
     jwt_secret: str
     jwt_expire_minutes: int = 480
     anchor_mode: str = "per_submission"  # per_submission (demo) | daily

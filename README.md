@@ -121,7 +121,7 @@ evidence-anchor/
 │   │   ├── core/
 │   │   │   ├── hashing.py                # Hash file/timestamp, bundle per-file-time-v2, hash tổng lô court-lot-v1
 │   │   │   ├── merkle.py                 # Cây Merkle cho neo theo ngày
-│   │   │   ├── signing.py, receipt.py    # Dựng + ký biên nhận (Ed25519)
+│   │   │   ├── signing.py, receipt.py    # Dựng + ký biên nhận (EIP-191)
 │   │   │   ├── security.py               # Mật khẩu (scrypt), JWT
 │   │   │   ├── file_types.py             # Chỉ nhận PDF, ảnh, video, âm thanh (đuôi + nội dung)
 │   │   │   └── chain.py                  # Ghi hash lên Sepolia, kiểm tra giao dịch

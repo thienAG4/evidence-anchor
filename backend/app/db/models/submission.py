@@ -37,7 +37,7 @@ class Submission(UUIDPk, Base):
     bundle_time_hash: Mapped[str] = mapped_column(CHAR(64), nullable=False)
     lot_meta_hash: Mapped[str | None] = mapped_column(CHAR(64))  # chỉ COURT_LOT
     bundle_hash: Mapped[str] = mapped_column(CHAR(64), nullable=False)
-    signature: Mapped[str] = mapped_column(Text, nullable=False)  # Ed25519 base64 trên receipt_json
+    signature: Mapped[str] = mapped_column(Text, nullable=False)  # EIP-191 hex 0x... (65 byte) trên 58 byte tóm tắt receipt_json
     receipt_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
 

@@ -75,7 +75,7 @@ Duy nhất theo (case_id, user_id, role_in_case).
 | bundle_time_hash | CHAR(64) | NN | SHA256(bundled_at) |
 | lot_meta_hash | CHAR(64) | | Chỉ COURT_LOT: SHA256(`"{place}\|{file_count}"`) |
 | bundle_hash | CHAR(64) | NN | Lá Merkle khi neo |
-| signature | TEXT | NN | Chữ ký hệ thống (Ed25519, base64) trên receipt_json |
+| signature | TEXT | NN | Chữ ký hệ thống (EIP-191, hex 65 byte) trên 58 byte: nhãn ‖ số khóa ‖ số thứ tự ‖ SHA256(receipt_json) |
 | receipt_json | JSONB | NN | Biên nhận tạm, tự chứa, ghi một lần lúc nộp |
 
 Bỏ so với bản trước: `bundle_tx_hash`, `block_number`, `block_time`, `status`, `last_result`, `last_checked_at`

@@ -37,7 +37,7 @@ mật khẩu, ví dụ `duongsu / 1234` (đương sự), `thuky / 5678` (thư k�
 | GET /submissions | PARTY | `page` | 200 danh sách biên nhận của mình (kèm `status`) | |
 | POST /submissions/lookup | PARTY | `file` | 200 `{receiptCode, fileCode, hashedAt}`; chỉ tìm trong biên nhận của chính mình | RECORD_NOT_FOUND |
 | GET /receipts/{code} | PARTY (của mình) | không | 200 biên nhận JSON có chữ ký hệ thống (có hash để tự kiểm tra); khi ANCHORED có thêm `anchor: {rootHash, merkleProof, txHash, blockNumber, blockTime, explorerUrl}` | RECEIPT_NOT_FOUND |
-| GET /signing-key | PUBLIC | không | 200 `{algorithm: "Ed25519", publicKey}` để tự kiểm chữ ký biên nhận | |
+| GET /signing-key | PUBLIC | không | 200 `{algorithm: "EIP-191", keyNo, address}` để tự kiểm chữ ký biên nhận (khôi phục địa chỉ từ chữ ký rồi so với `address`) | |
 
 `status` suy ra từ bảng `Anchor`/`AnchorLeaf`: `PENDING_ANCHOR` / `ANCHORED` / `ANCHOR_FAILED`.
 

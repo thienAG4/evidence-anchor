@@ -9,8 +9,7 @@ from app.config import settings
 from app.core.chain_reader import ChainReadError, get_anchor_tx
 from app.core.hashing import BUNDLE_SCHEME, LOT_SCHEME, compute_bundle, compute_lot_bundle, hash_stream, leaf_hash
 from app.core.merkle import verify_proof
-from app.core.receipt import signing_public_key
-from app.core.signing import verify_signature
+from app.core import receipt as receipt_signing
 from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
 
@@ -43,7 +42,8 @@ def verify(document: dict, streams: list[BinaryIO]) -> dict:
         raise AppError(400, ErrorCode.INVALID_RECEIPT_FORMAT,
                        f"Biên nhận không đúng định dạng (cần file JSON tải từ GET /receipts/{{code}}): {exc}") from None
 
-    check("Chữ ký hệ thống trên biên nhận", verify_signature(signing_public_key(), receipt, signature))
+    signer = settings.receipt_signer_address or receipt_signing.signing_address()
+    check("Chữ ký hệ thống trên biên nhận", receipt_signing.verify(receipt, signature, signer))
 
     actual = Counter(hash_stream(s) for s in streams)
     missing = [f["fileName"] for f in receipt_files if (expected - actual)[f["fileHash"]] > 0]

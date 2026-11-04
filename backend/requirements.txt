@@ -8,7 +8,6 @@ alembic
 psycopg[binary]
 pydantic-settings
 PyJWT
-cryptography
 streaming-form-data
 web3
 python-dotenv
