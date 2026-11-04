@@ -1,9 +1,14 @@
 import json
+import sys
 from contextlib import ExitStack
 from pathlib import Path
 
-from hashutils import hash_file
-from receipt import create_receipt, verify_receipt
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from app.core.hashing import hash_file
+from app.services.legacy_receipt_service import create_receipt, verify_receipt
 
 files = ["evidence_data/anhchup.jpg", "evidence_data/ghiam.m4a", "evidence_data/hopdong.docx"]
 

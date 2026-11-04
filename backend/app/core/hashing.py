@@ -8,6 +8,7 @@ from typing import BinaryIO
 vietnam_tz = timezone(timedelta(hours=7))
 
 BUNDLE_SCHEME = "per-file-time-v2"
+LOT_SCHEME = "court-lot-v1"
 CHUNK_SIZE = 1024 * 1024  # 1MB
 
 
@@ -96,6 +97,34 @@ def create_bundle(entries: list[dict]) -> dict:
 def compute_bundle(entries: list[dict], bundled_at: str) -> dict:
     """Tính lại bundle từ (fileHash, hashedAt) trong biên nhận để kiểm tra."""
     return finalize_bundle(compute_habc(entries), bundled_at)
+
+
+def lot_meta_hash(place: str, file_count: int) -> str:
+    """SHA256("{nơi nộp}|{số lượng}") — đổi nơi hay số lượng là Bundle lô khác."""
+    return hash_text(f"{place}|{file_count}")
+
+
+def finalize_lot_bundle(habc: dict, bundled_at: str, place: str, file_count: int) -> dict:
+    """Bundle lô = SHA256(Habc ‖ SHA256(thời điểm gộp) ‖ SHA256(nơi|số lượng))."""
+    bundle_time_hash = hash_text(bundled_at)
+    meta_hash = lot_meta_hash(place, file_count)
+    return {
+        **habc,
+        "bundledAt": bundled_at,
+        "bundleTimeHash": bundle_time_hash,
+        "lotMetaHash": meta_hash,
+        "bundleHash": hash_concat(habc["habc"], bundle_time_hash, meta_hash),
+    }
+
+
+def create_lot_bundle(entries: list[dict], place: str) -> dict:
+    """Hash tổng của lô nộp tại Tòa, lấy thời điểm Habc tính xong làm mốc."""
+    return finalize_lot_bundle(compute_habc(entries), now_vn(), place, len(entries))
+
+
+def compute_lot_bundle(entries: list[dict], bundled_at: str, place: str, file_count: int) -> dict:
+    """Tính lại hash tổng lô từ file chọn lại + giờ, nơi, số lượng đọc từ bản ghi lô (F3-AC5)."""
+    return finalize_lot_bundle(compute_habc(entries), bundled_at, place, file_count)
 
 
 def format_vn(iso_time: str) -> str:

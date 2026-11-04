@@ -1,13 +1,13 @@
 from collections import Counter
 from typing import BinaryIO
 
-from hashutils import BUNDLE_SCHEME, compute_bundle, create_bundle, hash_evidence, now_vn
-from history import append_history
+from app.core.hashing import BUNDLE_SCHEME, compute_bundle, create_bundle, hash_evidence, now_vn
+from app.db.history import append_history
 
 
 def create_receipt(items: list[tuple[str, BinaryIO]]) -> dict:
     """Hash từng file (kèm thời gian) -> bundle -> đẩy bundle + hash từng file lên Sepolia."""
-    from chain import account, anchor_to_sepolia
+    from app.core.chain import account, anchor_to_sepolia
 
     submitted_at = now_vn()
     entries = hash_evidence(items)
@@ -38,13 +38,15 @@ def create_receipt(items: list[tuple[str, BinaryIO]]) -> dict:
 
 def verify_receipt(receipt: dict, actual_hashes: list[str]) -> dict:
     """Đối chiếu file tải lên + công thức bundle + giao dịch trên Sepolia."""
-    from chain import verify_on_chain
+    from app.core.chain import account, verify_on_chain
 
     if receipt.get("bundleScheme") != BUNDLE_SCHEME:
         raise ValueError(f"Biên nhận không dùng công thức {BUNDLE_SCHEME}.")
     files = receipt["files"]
     bundle = receipt["bundle"]
-    sender = receipt.get("anchoredBy")
+    # Luôn kiểm theo ví của hệ thống, không tin "anchoredBy" trong biên nhận:
+    # nếu không, ai cũng tự neo bằng ví riêng rồi ghi ví đó vào biên nhận giả là qua được.
+    sender = account.address
 
     expected = Counter(f["fileHash"] for f in files)
     actual = Counter(actual_hashes)

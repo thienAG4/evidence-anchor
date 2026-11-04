@@ -6,6 +6,7 @@ __pycache__/
 history.json
 receipt.json
 evidence_data/
+backend/scripts/demo_files/
 
 # Bản Node.js cũ (không dùng nữa)
 node_modules/
@@ -14,3 +15,6 @@ package-lock.json
 
 # Streamlit secrets (chứa PRIVATE_KEY)
 .streamlit/secrets.toml
+
+# Cấu hình cá nhân của Claude Code (quyền lệnh, đường dẫn trên máy)
+.claude/

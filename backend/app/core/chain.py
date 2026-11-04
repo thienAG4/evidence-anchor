@@ -1,10 +1,11 @@
 import os
+import threading
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from web3 import Web3
 
-from hashutils import vietnam_tz
+from app.core.hashing import vietnam_tz
 
 load_dotenv()
 
@@ -12,9 +13,18 @@ w3 = Web3(Web3.HTTPProvider(os.environ["SEPOLIA_RPC_URL"]))
 account = w3.eth.account.from_key(os.environ["PRIVATE_KEY"])
 CHAIN_ID = 11155111  # Sepolia network
 
+# Nhiều phiên Streamlit (nhiều thread) cùng gửi sẽ lấy trùng nonce -> giao dịch sau bị từ chối.
+# Khóa để mỗi lần chỉ 1 giao dịch: lấy nonce, gửi, chờ xác nhận.
+_send_lock = threading.Lock()
+
 
 def anchor_to_sepolia(hash_value: str) -> dict:
     """Ghi một hash SHA-256 lên Sepolia (tx 0 ETH gửi cho chính mình), trả về link + thông tin truy vấn."""
+    with _send_lock:
+        return _send_anchor_tx(hash_value)
+
+
+def _send_anchor_tx(hash_value: str) -> dict:
     latest = w3.eth.get_block("latest")
     priority = w3.to_wei(2, "gwei")
 
