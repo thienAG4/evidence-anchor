@@ -1,13 +1,14 @@
 /* ==========================================================================
    Trang Lưu chứng cứ – pages/litigant/submit-evidence.html
    - Chọn / kéo thả file, xóa từng file khỏi danh sách.
-   - "Lưu chứng cứ": tính SHA-256 từng file trên máy rồi tạo biên nhận mới
-     (hiện là dữ liệu mẫu lưu ở localStorage, chờ nối API backend).
+   - "Lưu chứng cứ": gửi file lên POST /submissions; máy chủ băm từng file (kèm giờ) rồi bỏ file,
+     trả biên nhận. Chỉ nhận PDF, ảnh, video, âm thanh.
    Xem trước trạng thái: ?state=success | ?state=error
    ========================================================================== */
 
 (function (EC) {
   'use strict';
+  EC.data.whenReady(() => {
 
   const CURRENT_USER = EC.USERS.litigant;
 
@@ -120,32 +121,25 @@
   });
 
   // ---------------------------------------------------------------- Lưu chứng
+  const errorText = document.querySelector('#modal-submit-error .modal__text');
+  const DEFAULT_ERROR = errorText.textContent;
+
   async function submitEvidence() {
     submitButton.disabled = true;
-    submitLabel.textContent = 'Đang tính mã băm…';
+    submitLabel.textContent = 'Đang gửi và tính mã băm…';
 
     try {
-      if (forceError || !navigator.onLine) throw new Error('offline');
+      if (forceError) throw new Error(DEFAULT_ERROR);
+      const files = selectedFiles.filter((f) => f.file).map((f) => f.file);
+      if (!files.length) throw new Error('Hãy chọn file thật trên máy (file mẫu chỉ để xem trước giao diện).');
 
-      const files = [];
-      for (const f of selectedFiles) {
-        const hash = f.file ? await EC.sha256(f.file) : null;
-        files.push({ name: f.name, size: f.size, hash, result: 'unchecked' });
-      }
-
-      const receipt = EC.data.addReceipt({
-        id: EC.data.nextReceiptId(),
-        litigant: CURRENT_USER.name,
-        status: 'recorded',
-        recordedAt: EC.nowText(),
-        lockedAt: '23:59 ' + EC.nowText().split(' ')[1],
-        files,
-      });
-
+      const receipt = await EC.data.submit(files);
       showSuccess(receipt);
       selectedFiles = [];
       renderReceiptTable();
     } catch (err) {
+      // Lỗi từ máy chủ đã có câu tiếng Việt, ví dụ file .exe/.zip bị từ chối, mất kết nối
+      errorText.textContent = `${err.message} Chưa có lần lưu chứng cứ nào được tạo.`;
       EC.modal.open('modal-submit-error');
     } finally {
       renderFileList();
@@ -185,4 +179,5 @@
   } else if (forceError) {
     EC.modal.open('modal-submit-error');
   }
+  });
 })(window.EC);

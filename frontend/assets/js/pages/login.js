@@ -1,29 +1,26 @@
 /* ==========================================================================
    Trang Đăng nhập – pages/auth/login.html
-   Tài khoản demo:
-     - duongsu / 1234 → Đương sự  (Nguyễn Thu Minh)
-     - thuky   / 5678 → Thư ký tòa án (Đỗ Thanh Bạch)
+   Đăng nhập qua API POST /auth/login bằng tài khoản có sẵn (backend/scripts/seed.py):
+     - duongsu / 1234 → Đương sự
+     - thuky   / 5678 → Thư ký tòa án
+   Vào trang này = đăng xuất (xóa phiên cũ).
    Xem trước trạng thái: login.html?state=error | ?state=success
    ========================================================================== */
 
 (function (EC) {
   'use strict';
 
-  // Tài khoản demo — chỉ để trình bày giao diện, thay bằng API đăng nhập khi có backend
-  const DEMO_ACCOUNTS = {
-    duongsu: { password: '1234', role: 'litigant' },
-    thuky: { password: '5678', role: 'clerk' },
-  };
-  const MAX_ATTEMPTS = 5;
   const REDIRECT_DELAY_MS = 2500;
+
+  EC.auth.clear();
 
   const form = document.getElementById('login-form');
   const accountInput = document.getElementById('login-account');
   const passwordInput = document.getElementById('login-password');
   const togglePasswordBtn = document.getElementById('toggle-password');
   const attemptsText = document.getElementById('login-attempts');
-
-  let attemptsLeft = MAX_ATTEMPTS;
+  const errorText = document.querySelector('#modal-login-error .modal__text');
+  const submitButton = form.querySelector('[type="submit"]');
 
   // ---- Hiện / ẩn mật khẩu ----
   togglePasswordBtn.addEventListener('click', () => {
@@ -40,32 +37,32 @@
   });
 
   // ---- Gửi form ----
-  form.addEventListener('submit', (event) => {
+  form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const account = DEMO_ACCOUNTS[accountInput.value.trim().toLowerCase()];
-
-    if (account && passwordInput.value === account.password) {
-      showSuccess(account.role);
-    } else {
-      showError();
+    if (submitButton) submitButton.disabled = true;
+    try {
+      showSuccess(await EC.auth.login(accountInput.value.trim(), passwordInput.value));
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      if (submitButton) submitButton.disabled = false;
     }
   });
 
-  function showError() {
-    attemptsLeft = Math.max(0, attemptsLeft - 1);
-    attemptsText.textContent = attemptsLeft > 0
-      ? `Còn ${attemptsLeft} lần thử trước khi tài khoản bị tạm khóa 15 phút.`
-      : 'Tài khoản đã bị tạm khóa 15 phút. Vui lòng thử lại sau.';
+  /** Thông báo lỗi lấy từ server (sai tài khoản, mất kết nối, vai trò chưa có giao diện) */
+  function showError(message = 'Tên đăng nhập hoặc mật khẩu không đúng.') {
+    errorText.textContent = message;
+    attemptsText.hidden = true; // máy chủ chưa giới hạn số lần thử
     EC.modal.open('modal-login-error');
   }
 
   function showSuccess(role, { autoRedirect = true } = {}) {
-    const user = EC.USERS[role];
+    const name = EC.auth.user()?.fullName || EC.USERS[role].name; // xem trước (?state=success) chưa đăng nhập
     const target = EC.url(EC.HOME_PAGE[role]);
     const pageName = role === 'clerk' ? 'Các lần lưu chứng cứ' : 'Lưu chứng';
 
     document.getElementById('login-success-text').textContent =
-      `Xin chào ${user.name}. Đang chuyển đến trang ${pageName}…`;
+      `Xin chào ${name}. Đang chuyển đến trang ${pageName}…`;
     document.getElementById('login-continue').href = target;
     EC.modal.open('modal-login-success');
 
@@ -87,7 +84,6 @@
   // ---- Xem trước trạng thái qua URL ----
   const state = EC.param('state');
   if (state === 'error') {
-    attemptsLeft = MAX_ATTEMPTS;
     showError();
   } else if (state === 'success') {
     accountInput.value = 'duongsu';

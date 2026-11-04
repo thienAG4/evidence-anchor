@@ -8,8 +8,9 @@
 
 (function (EC) {
   'use strict';
+  EC.data.whenReady(() => {
 
-  const LOCK_HINT = 'Chờ khóa lúc 23:59 hôm nay mới đối chiếu được';
+  const LOCK_HINT = 'Chờ khóa (neo lên chuỗi) xong mới đối chiếu được';
 
   // Góc nhìn thư ký: tên trạng thái của từng file
   const FILE_STATUS_FOR_CLERK = {
@@ -153,4 +154,5 @@
   renderTable();
   const openId = EC.param('open');
   if (openId) openDrawer(openId);
+  });
 })(window.EC);

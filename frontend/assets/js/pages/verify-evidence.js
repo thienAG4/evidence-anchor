@@ -5,19 +5,14 @@
           → xem kết quả → "Lưu kết quả" → xác nhận → khóa kết quả.
    Lần lưu chứng KHÔNG chọn lại được trên trang này.
 
-   Cách so sánh:
-   - File đã có mã băm thật (tạo từ trang Lưu chứng cứ trên máy này):
-     tính SHA-256 file Tòa chọn và so với mã băm đã lưu.
-   - Dữ liệu mẫu (không có mã băm): tạm so theo TÊN FILE để demo giao diện.
-
-   Xem trước trạng thái: ?state=result | ?state=confirm | ?state=saved
+   Cách so sánh: file Tòa chọn được gửi lên máy chủ, máy chủ băm SHA-256 rồi so với file cùng mã trong
+   biên nhận (thư ký không thấy mã băm). Chọn file = xem trước (POST /clerk/receipts/{id}/compare, không ghi);
+   "Lưu kết quả" = máy chủ băm lại các file và ghi kết quả kèm giai đoạn (POST …/verifications).
    ========================================================================== */
 
 (function (EC) {
   'use strict';
-
-  // Chỉ dùng khi xem trước trạng thái (?state=…) mà không truyền ?id=
-  const PREVIEW_ID = 'TX-0007';
+  EC.data.whenReady(() => {
 
   const receiptDisplay = document.getElementById('receipt-display');
   const phaseSelect = document.getElementById('phase-select');
@@ -31,7 +26,7 @@
   const savedBanner = document.getElementById('saved-banner');
 
   let receipt = null;
-  /** Mỗi hàng: { file, chosenName, result: 'match'|'mismatch'|null, locked, computing } */
+  /** Mỗi hàng: { file, chosenName, chosenFile, result: 'match'|'mismatch'|null, locked, computing } */
   let rows = [];
   let savedAt = null;
 
@@ -126,7 +121,7 @@
       alertBox.innerHTML = `
         <i data-lucide="info" class="icon-sm"></i>
         <div>
-          <p class="alert__text" style="color: var(--color-text)">Chọn đúng file tương ứng trong hồ sơ vụ án. File không được tải lên hệ thống.</p>
+          <p class="alert__text" style="color: var(--color-text)">Chọn đúng file tương ứng trong hồ sơ vụ án. File chỉ được gửi lên để tính mã băm rồi bỏ, không lưu lại.</p>
           <p class="alert__text text-xs">Quá trình kiểm chứng thực hiện tại chỗ bằng thuật toán đối sánh tự động. Tòa án đảm bảo tính bảo mật dữ liệu tuyệt đối theo Nghị định 13/2023/NĐ-CP.</p>
         </div>`;
     } else if (s.mismatch > 0) {
@@ -191,16 +186,16 @@
     row.computing = true;
     render();
 
-    if (row.file.hash) {
-      const hash = await EC.sha256(file);
-      row.result = hash === row.file.hash ? 'match' : 'mismatch';
-    } else {
-      // DỮ LIỆU MẪU: chưa có mã băm → so theo tên file (thay bằng so hash khi nối backend)
-      row.result = file.name === row.file.name ? 'match' : 'mismatch';
+    try {
+      row.result = await EC.data.compare(receipt.id, row.file.code, file);
+      row.chosenName = file.name;
+      row.chosenFile = file; // giữ lại để gửi lên khi "Lưu kết quả" (máy chủ băm lại, không tin kết quả trình duyệt)
+    } catch (err) {
+      alert(err.message); // vd file .exe bị từ chối, chưa khóa, mất kết nối
+    } finally {
+      row.computing = false;
+      render();
     }
-    row.chosenName = file.name;
-    row.computing = false;
-    render();
   }
 
   tableBody.addEventListener('change', (event) => {
@@ -214,6 +209,7 @@
     const row = rows[Number(btn.dataset.clear)];
     row.result = null;
     row.chosenName = null;
+    row.chosenFile = null;
     render();
   });
 
@@ -230,22 +226,32 @@
     EC.modal.open('modal-confirm-save');
   }
 
-  function saveResults() {
-    const now = EC.nowText();
-    rows.forEach((row) => {
-      if (row.result && !row.locked) {
+  async function saveResults() {
+    const pending = rows.filter((row) => row.result && !row.locked && row.chosenFile);
+    const confirmButton = document.getElementById('confirm-save-button');
+    confirmButton.disabled = true;
+    try {
+      const updated = await EC.data.saveVerification(
+        receipt.id, phaseSelect.value, pending.map((row) => ({ code: row.file.code, file: row.chosenFile })));
+      // Lấy kết quả + giờ kiểm tra do máy chủ ghi → đương sự thấy cùng kết quả
+      pending.forEach((row) => {
+        const saved = updated.files.find((f) => f.code === row.file.code);
+        row.file = saved;
+        row.result = saved.result;
         row.locked = true;
-        row.file.result = row.result; // cập nhật dữ liệu → đương sự thấy kết quả
-        row.file.checkedAt = now; // ghi vào dữ liệu (không chỉ biến tạm) → còn lại sau khi tải lại trang
-      }
-    });
-    receipt.status = 'checked';
-    EC.data.saveReceipt(receipt);
-    savedAt = now;
-    document.querySelector('[data-field="savedAt"]').textContent = savedAt;
-    EC.modal.close('modal-confirm-save');
-    render();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      receipt = updated;
+      savedAt = pending.length ? pending[pending.length - 1].file.checkedAt : EC.nowText();
+      document.querySelector('[data-field="savedAt"]').textContent = savedAt;
+      EC.modal.close('modal-confirm-save');
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      EC.modal.close('modal-confirm-save');
+      alert(`Chưa lưu được kết quả: ${err.message}`);
+    } finally {
+      confirmButton.disabled = false;
+    }
   }
 
   saveButton.addEventListener('click', openConfirm);
@@ -253,7 +259,7 @@
 
   // ---------------------------------------------------------------- Khởi tạo
   const state = EC.param('state');
-  const id = EC.param('id') || (state ? PREVIEW_ID : null);
+  const id = EC.param('id');
   const found = id ? EC.data.getReceipt(id) : null;
 
   if (!id) {
@@ -261,19 +267,19 @@
     return;
   }
   if (!found) {
-    // Không có mốc để so: hệ thống không có lần lưu chứng cứ (sự kiện A) nào ứng với mã này,
-    // nên không có gì để đối chiếu — không phải lỗi, chỉ là chưa từng được lưu chứng.
-    showUnavailable(`Không có mốc để so: hệ thống không có lần lưu chứng cứ nào với mã ${id}.`);
+    // Không có mốc để so: không có lần lưu chứng cứ (sự kiện A) nào ứng với mã này trong các vụ mình phụ trách
+    showUnavailable(`Không có mốc để so: không có lần lưu chứng cứ nào với mã ${id} thuộc đương sự trong vụ án bạn phụ trách.`);
     return;
   }
   if (found.status === 'recorded') {
-    showUnavailable(`Lần lưu chứng cứ ${found.id} chưa khóa (sẽ khóa lúc ${found.lockedAt}). Chỉ đối chiếu được sau khi đã khóa.`);
+    showUnavailable(`Lần lưu chứng cứ ${found.id} chưa khóa (chưa neo lên chuỗi). Chỉ đối chiếu được sau khi đã khóa.`);
     return;
   }
 
   loadReceipt(found);
 
-  // Xem trước các trạng thái của thiết kế
+  // Xem trước giao diện (?state=result|confirm) trên một biên nhận thật; KHÔNG gửi gì lên máy chủ.
+  // (Bỏ ?state=saved: lưu kết quả cần file thật để máy chủ băm.)
   if (state && rows.length >= 2) {
     const first = rows[0];
     const second = rows[1];
@@ -283,6 +289,6 @@
     second.result = 'mismatch';
     render();
     if (state === 'confirm') openConfirm();
-    if (state === 'saved') saveResults();
   }
+  });
 })(window.EC);
