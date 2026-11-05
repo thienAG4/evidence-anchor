@@ -20,6 +20,22 @@
   margin: 0;
 }
 
+.ots-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ots-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .receipt-files .table th {
   padding-left: var(--space-4);
 }

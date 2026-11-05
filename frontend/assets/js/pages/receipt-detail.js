@@ -100,6 +100,49 @@
     });
   }
 
+  // ---------------------------------------------------------------- OpenTimestamps (6.9)
+  const otsBox = document.getElementById('receipt-ots');
+  const otsNote = document.getElementById('receipt-ots-note');
+  const otsList = document.getElementById('receipt-ots-list');
+  const b64bytes = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+  function renderOts(items) {
+    const byCode = Object.fromEntries(items.map((i) => [i.fileCode, i]));
+    otsList.innerHTML = files.map((f) => {
+      const it = byCode[f.code];
+      const state = !it ? 'Chưa đóng dấu'
+        : (it.status === 'COMPLETE' ? `Đã có trên Bitcoin, block ${it.bitcoinBlock}` : 'Đã đóng dấu, chờ Bitcoin xác nhận (vài giờ)');
+      return `<li><span><span class="code-text">${EC.escape(f.code)}</span> · ${EC.escape(state)}</span>
+        ${it ? `<button type="button" class="btn btn--secondary" data-ots="${EC.escape(f.code)}">
+          <i data-lucide="download" class="icon-sm"></i>Tải ${EC.escape(f.code)}.ots</button>` : ''}</li>`;
+    }).join('');
+    otsList.querySelectorAll('[data-ots]').forEach((btn) => btn.addEventListener('click', () => {
+      EC.ots.save(b64bytes(byCode[btn.dataset.ots].ots), `${btn.dataset.ots}.ots`);
+    }));
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  async function loadOts() {
+    const body = await EC.api(`/receipts/${encodeURIComponent(receipt.id)}`);
+    otsBox.hidden = false;
+    renderOts(body.ots);
+    const missing = files.filter((f) => f.hash && !body.ots.some((i) => i.fileCode === f.code));
+    if (!missing.length) {
+      otsNote.textContent = body.ots.every((i) => i.status === 'COMPLETE')
+        ? 'Mọi file đã có dấu thời gian trên Bitcoin. Tải lại biên nhận (.json) để có bản hoàn chỉnh.'
+        : 'Hệ thống tự nâng cấp mỗi giờ. Khi Bitcoin xác nhận, tải lại file .ots hoặc biên nhận (.json).';
+      return;
+    }
+    otsNote.textContent = `Đang đóng dấu ${missing.length} file lên Bitcoin...`;
+    const results = await EC.ots.stampReceipt(receipt.id, missing);
+    const failed = results.filter((r) => !r.ok);
+    renderOts((await EC.api(`/receipts/${encodeURIComponent(receipt.id)}`)).ots);
+    otsNote.textContent = failed.length
+      ? `Chưa đóng dấu được ${failed.map((r) => r.code).join(', ')}: ${failed[0].error}. Mở lại trang để thử lại.`
+      : 'Đã đóng dấu. Bitcoin xác nhận sau vài giờ; hệ thống tự nâng cấp mỗi giờ. Nên tải file .ots về giữ riêng.';
+  }
+  if (EC.ots) loadOts().catch(() => {});
+
   // ---------------------------------------------------------------- Bảng mã file
   document.getElementById('receipt-files-body').innerHTML = files.map((f) => `
     <tr>

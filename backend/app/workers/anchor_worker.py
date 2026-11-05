@@ -11,11 +11,12 @@ receipt(tx_hash) -> {success, blockNumber, blockTime} | None, finalized_block().
 """
 import logging
 import threading
+import time
 
 from app.config import settings
 from app.db.models import AnchorState
 from app.db.session import SessionLocal
-from app.services import anchor_service
+from app.services import anchor_service, ots_service
 
 logger = logging.getLogger("anchor_worker")
 
@@ -63,12 +64,22 @@ def main():
 
     logger.info("Worker neo chạy, ví %s, mỗi %ss", chain.account.address, settings.anchor_interval_seconds)
     stop = threading.Event()
+    next_ots = 0.0
     try:
         while not stop.is_set():
             try:
                 run_once(chain)
             except Exception:
                 logger.exception("Vòng neo lỗi")
+            if time.monotonic() >= next_ots:  # OpenTimestamps: nâng cấp bản chờ mỗi OTS_UPGRADE_SECONDS (6.9)
+                next_ots = time.monotonic() + settings.ots_upgrade_seconds
+                try:
+                    with SessionLocal() as db:
+                        result = ots_service.upgrade_pending(db)
+                    if result["upgraded"] or result["pending"]:
+                        logger.info("OpenTimestamps: %s", result)
+                except Exception:
+                    logger.exception("Nâng cấp OpenTimestamps lỗi")
             stop.wait(settings.anchor_interval_seconds)
     except KeyboardInterrupt:
         logger.info("Dừng worker neo.")

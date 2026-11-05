@@ -13,6 +13,7 @@
   <script defer src="../../assets/js/config/navigation.js"></script>
   <script defer src="../../assets/js/config/status.js"></script>
   <script defer src="../../assets/js/data/api.js"></script>
+  <script defer src="../../assets/js/data/ots.js"></script>
   <script defer src="../../assets/js/core/ui.js"></script>
   <script defer src="../../assets/js/components/app-header.js"></script>
   <script defer src="../../assets/js/components/app-sidebar.js"></script>
@@ -109,6 +110,21 @@
               <summary>Thông tin kỹ thuật (mã băm SHA-256)</summary>
               <ul id="receipt-tech-list" class="tech-details__list"></ul>
             </details>
+          </section>
+
+          <!-- OpenTimestamps (6.9): trình duyệt tự đóng dấu hash file lên Bitcoin, độc lập với Tòa và Ethereum -->
+          <section id="receipt-ots" class="card page-section" hidden>
+            <header class="card__header">
+              <div>
+                <h2 class="card__title">Dấu thời gian Bitcoin (OpenTimestamps)</h2>
+                <p class="section-subtitle">
+                  Trình duyệt của bạn tự đóng dấu mã băm của từng file lên Bitcoin, không qua Tòa. Máy chủ đóng dấu không
+                  thấy file. Bitcoin xác nhận sau vài giờ; hãy tải file .ots về và giữ cùng file gốc.
+                </p>
+              </div>
+            </header>
+            <p id="receipt-ots-note" class="form-hint"></p>
+            <ul id="receipt-ots-list" class="ots-list"></ul>
           </section>
 
           <!-- Tự kiểm tra (UI-16): tải biên nhận hoàn chỉnh rồi kiểm tra, không cần hỏi Tòa -->

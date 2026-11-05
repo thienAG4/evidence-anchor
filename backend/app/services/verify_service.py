@@ -2,6 +2,7 @@
 
 Biên nhận là JSON tải từ GET /receipts/{code}: {"receipt": {...}, "signature": "...", "anchor": {...} | null}.
 """
+import base64
 from collections import Counter
 from typing import BinaryIO
 
@@ -11,6 +12,7 @@ from app.core.chain_reader import ChainReadError, get_anchor_tx, get_finalized_b
 from app.core.hashing import BUNDLE_SCHEME, LOT_SCHEME, compute_bundle, compute_lot_bundle, hash_stream, leaf_hash
 from app.core.merkle import verify_record_proof
 from app.core.payload import decode_anch
+from app.core import ots
 from app.core import receipt as receipt_signing
 from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
@@ -62,6 +64,8 @@ def verify(document: dict, streams: list[BinaryIO]) -> dict:
     check("Tính lại Habc, Bundle", recomputed["habc"] == bundle["habc"]
           and recomputed["bundleHash"] == bundle["bundleHash"])
 
+    _check_ots(check, receipt_files, document.get("ots") or [])
+
     if not anchor:
         check("Biên nhận đã được neo lên Sepolia", False,
               "chưa có phần anchor: tải lại biên nhận sau khi trạng thái là Đã neo")
@@ -69,6 +73,35 @@ def verify(document: dict, streams: list[BinaryIO]) -> dict:
         _check_records(check, receipt, anchor)
 
     return {"valid": all(c["ok"] for c in checks), "receiptCode": receipt.get("receiptCode"), "checks": checks}
+
+
+def _check_ots(check, receipt_files: list[dict], items: list) -> None:
+    """OpenTimestamps (6.9, tùy chọn): kiểm offline file .ots đóng dấu đúng hash file trong biên nhận và đang chờ hay
+    đã có block Bitcoin. Đối chiếu block đó với Bitcoin thì người kiểm tra tự làm (opentimestamps.org, ots verify)."""
+    if not items:
+        return
+    hashes = {f.get("fileCode"): f.get("fileHash") for f in receipt_files}
+    bad, done, waiting = [], [], []
+    for item in items:
+        code = item.get("fileCode") if isinstance(item, dict) else None
+        try:
+            meta = ots.info(base64.b64decode(item["ots"], validate=True))
+        except (KeyError, TypeError, ValueError):  # gồm OtsError, base64 sai
+            bad.append(code or "?")
+            continue
+        if hashes.get(code) != meta.file_hash:
+            bad.append(code or "?")
+        elif meta.complete:
+            done.append(f"{code} (Bitcoin block {meta.bitcoin_blocks[0]})")
+        else:
+            waiting.append(code)
+    detail = "; ".join(filter(None, [
+        f"sai: {', '.join(bad)}" if bad else None,
+        f"đã có trên Bitcoin: {', '.join(done)}" if done else None,
+        f"đang chờ Bitcoin xác nhận: {', '.join(waiting)}" if waiting else None,
+        "tự đối chiếu với Bitcoin bằng opentimestamps.org hoặc lệnh ots verify (cần file gốc và file .ots)",
+    ]))
+    check("OpenTimestamps: file .ots đóng dấu đúng hash từng file", not bad, detail)
 
 
 def _check_records(check, receipt: dict, anchor: dict) -> None:

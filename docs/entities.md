@@ -16,7 +16,7 @@ dòng cũ mà ghi thêm vào bảng riêng (`AnchorLeaf`, `ChainTx`, `ChainTxRes
 |---|---|
 | Submission, FileHash, LogRecord, AnchorBatch, AnchorLeaf, ChainTx, ChainTxResult, IntegrityCheck, AppraisalStep, Dossier, DossierItem, AccessLog | User, CourtCase, CaseParticipant, AnchorState (chỉ UPDATE, không thêm / xóa dòng) |
 
-Chưa làm: `OtsStamp` (chỉ cần nếu demo đóng dấu OpenTimestamps). `AnchorFinality` (bản trước) đã thay bằng
+`OtsStamp`: xem mục OTSSTAMP cuối file. `AnchorFinality` (bản trước) đã thay bằng
 `ChainTxResult` có `status = FINALIZED`.
 
 ## USER
@@ -262,6 +262,31 @@ Worker neo, mỗi vòng:
 
 NOOP không gửi tự động: thay giao dịch ANCH kẹt bằng NOOP cùng nonce sẽ bỏ đợt đó khỏi chuỗi, làm đứt quy tắc liền
 mạch. Kẹt thì gửi lại chính ANCH với phí cao hơn; quá giới hạn thì dừng để người vận hành xử lý.
+
+## OTSSTAMP (OpenTimestamps cho bản ghi A, được sửa)
+
+Theo Final_ERD (gộp OtsUpgrade vào một bảng), thêm `stamped_at` để báo động sau 48 giờ. Bảng thứ hai được UPDATE
+sau `anchor_state` (điền bản hoàn chỉnh); không ai xóa được.
+
+| Attribute | Kiểu | Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | |
+| record_seq | BIGINT | FK → LogRecord.seq, UQ, NN | Chỉ bản ghi A (lưu chứng của đương sự) |
+| file_hash | CHAR(64) | NN | Hash đã đóng dấu (bằng `FileHash.file_hash`) |
+| ots_pending | BYTEA | NN | File .ots bản chờ, giữ nguyên như trình duyệt gửi lên |
+| ots_complete | BYTEA | | Bản đã nâng cấp (có block Bitcoin) |
+| bitcoin_block | BIGINT | | Block Bitcoin thấp nhất xác nhận |
+| stamped_at | TIMESTAMPTZ | NN | Lúc server nhận bản chờ |
+| upgraded_at | TIMESTAMPTZ | | Lúc nâng cấp xong |
+
+Quan hệ: LogRecord (loại A) 1–0..1 OtsStamp.
+
+Luồng (tài liệu kỹ thuật 6.9): trình duyệt đương sự lấy `fileHash` trong biên nhận, trộn nonce 16 byte, băm, gửi tới
+4 máy chủ lịch (`OTS_CALENDARS`); máy chủ nào chặn CORS thì qua `POST /ots/relay/{i}`. Trình duyệt ghép file .ots rồi
+gửi lên `POST /receipts/{code}/ots`. Server kiểm: đọc được, đúng hash file, chỉ chờ ở máy chủ lịch trong danh sách cho
+phép (job nâng cấp gọi các địa chỉ này). Worker neo nâng cấp mỗi `OTS_UPGRADE_SECONDS` (3600), log ERROR khi quá
+`OTS_ALARM_HOURS` (48) chưa xong; chạy tay: `python -m app.workers.ots_upgrade`. Đối chiếu với Bitcoin do người kiểm
+tra tự làm (opentimestamps.org, `ots verify`); `/verify` chỉ kiểm offline.
 
 ## ANCHORFINALITY (block chứa giao dịch neo đã chốt)
 
