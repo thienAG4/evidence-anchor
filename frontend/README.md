@@ -6,7 +6,7 @@ HTML cho từng trang, CSS tách theo lớp (nền tảng → bố cục → com
 
 ## Chạy thử
 
-Giao diện gọi API backend thật (FastAPI + PostgreSQL), nên cần chạy backend trước — xem README ở thư mục gốc, mục 5.1.
+Giao diện gọi API backend thật (FastAPI + PostgreSQL), nên cần chạy backend trước — xem README ở thư mục gốc, mục 7.3.
 
 - **Cách khuyên dùng:** chạy backend rồi mở **http://localhost:8000** — backend phục vụ luôn thư mục `frontend/`,
   giao diện và API cùng một địa chỉ.
@@ -29,7 +29,6 @@ Thẩm phán, admin chưa có giao diện web (đăng nhập sẽ báo), dùng A
 ```
 frontend/
 ├── index.html                    ← điểm vào, chuyển tới trang đăng nhập
-├── app.py                        ← giao diện Streamlit cũ (không liên quan, giữ nguyên)
 ├── pages/
 │   ├── auth/
 │   │   └── login.html            ← Đăng nhập
@@ -139,4 +138,4 @@ Mọi trang đọc dữ liệu qua `EC.data` trong `assets/js/data/api.js`; tran
 Trạng thái biên nhận: **Đã ghi nhận** = chưa neo lên blockchain → **Đã khóa** = đã neo (không ai sửa được) →
 **Tòa đã kiểm tra** = thư ký đã lưu kết quả đối chiếu **đủ n/n file** (đối chiếu dở dang: các file còn lại hiện
 "Đang kiểm tra"). Mỗi file chỉ đối chiếu 1 lần; giai đoạn đối chiếu khóa theo lần lưu đầu. Chỉ đối chiếu được sau khi đã khóa, nên muốn thử trang
-Đối chiếu phải chạy worker neo (cần `PRIVATE_KEY` ví test có Sepolia ETH — README gốc, mục 5.1).
+Đối chiếu phải chạy worker neo (cần `PRIVATE_KEY` ví test có Sepolia ETH — README gốc, mục 7.3).

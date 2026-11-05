@@ -10,6 +10,7 @@ pydantic-settings
 PyJWT
 streaming-form-data
 web3
+requests  # đọc giao dịch Sepolia (chain_reader), script e2e
 opentimestamps==0.4.5  # OpenTimestamps (6.9): đọc, nâng cấp file .ots
 python-dotenv
 pytest
