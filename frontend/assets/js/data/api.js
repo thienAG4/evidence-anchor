@@ -123,23 +123,26 @@
   }
 
   /**
-   * Biên nhận từ API → { id, litigant, status, recordedAt, lockedAt, files: [{ code, name, hash, result, checkedAt }] }.
-   * status: recorded (chưa neo lên chuỗi) → locked (đã neo, không ai sửa được) → checked (Tòa đã đối chiếu).
+   * Biên nhận từ API → { id, litigant, status, recordedAt, lockedAt, phase, files: [{ code, name, hash, result, checkedAt }] }.
+   * status: recorded (chưa neo lên chuỗi) → locked (đã neo, không ai sửa được) → checked (Tòa đã đối chiếu đủ n/n file).
+   * lockedAt: giờ neo thật; chưa neo thì null (không đoán giờ khóa).
+   * Tòa đã đối chiếu một phần: các file còn lại là 'checking' (Đang kiểm tra), chưa bắt đầu thì 'unchecked'.
    */
   function toReceipt(view) {
-    const day = vnText(view.submittedAt).split(' ')[1];
+    const inProgress = view.checkedCount > 0 && !view.checked;
     return {
       id: view.receiptCode,
       litigant: view.owner.fullName,
       status: view.status !== 'ANCHORED' ? 'recorded' : (view.checked ? 'checked' : 'locked'),
       anchorStatus: view.status,
       recordedAt: vnText(view.submittedAt),
-      lockedAt: view.anchoredAt ? vnText(view.anchoredAt) : `23:59 ${day}`,
+      lockedAt: view.anchoredAt ? vnText(view.anchoredAt) : null,
+      phase: (view.files.find((f) => f.phase) || {}).phase || null, // giai đoạn đã chọn khi đối chiếu
       files: view.files.map((f) => ({
         code: f.fileCode,
         name: f.fileName,
         hash: f.fileHash || null, // chỉ có khi đương sự xem biên nhận của chính mình
-        result: f.result ? RESULT_OF[f.result.value] : 'unchecked',
+        result: f.result ? RESULT_OF[f.result.value] : (inProgress ? 'checking' : 'unchecked'),
         checkedAt: f.result ? vnText(f.result.checkedAt) : null,
         phase: f.phase,
       })),
@@ -249,6 +252,30 @@
       form.append('file', file, file.name);
       const body = await EC.api(`/clerk/receipts/${encodeURIComponent(receiptId)}/compare`, { method: 'POST', form });
       return RESULT_OF[body.value];
+    },
+
+    /**
+     * Đương sự tải biên nhận hoàn chỉnh (receipt + chữ ký + bằng chứng neo) thành file JSON.
+     * Trả về true nếu biên nhận đã có bằng chứng neo, false nếu mới là biên nhận tạm.
+     */
+    async downloadReceipt(receiptId) {
+      const body = await EC.api(`/receipts/${encodeURIComponent(receiptId)}`);
+      const payload = { receipt: body.receipt, signature: body.signature, anchor: body.anchor };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const link = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(blob), download: `bien-nhan-${receiptId}.json`,
+      });
+      link.click();
+      URL.revokeObjectURL(link.href);
+      return Boolean(body.anchor);
+    },
+
+    /** Ai cũng kiểm được (không cần đăng nhập): biên nhận JSON + file gốc → { valid, checks: [{ name, ok, detail }] } */
+    async verifyReceipt(receiptFile, files) {
+      const form = new FormData();
+      form.append('receipt', receiptFile, receiptFile.name);
+      files.forEach((file) => form.append('files', file, file.name));
+      return EC.api('/verify', { method: 'POST', form, auth: false });
     },
 
     /** Thư ký lưu kết quả: server băm lại từng file rồi ghi. items: [{ code, file }] */

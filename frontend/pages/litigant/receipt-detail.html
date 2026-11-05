@@ -105,6 +105,29 @@
             </details>
           </section>
 
+          <!-- Tự kiểm tra (UI-16): tải biên nhận hoàn chỉnh rồi kiểm tra, không cần hỏi Tòa -->
+          <section class="card page-section">
+            <header class="card__header">
+              <div>
+                <h2 class="card__title">Tự kiểm tra biên nhận</h2>
+                <p class="section-subtitle">
+                  Tải biên nhận về máy và giữ cùng file gốc. Bất cứ lúc nào, bạn hoặc người khác (luật sư, Tòa) cũng tự
+                  kiểm tra được mà không cần tài khoản: file còn nguyên vẹn, biên nhận đúng chữ ký hệ thống và đã ghi lên
+                  chuỗi công khai.
+                </p>
+              </div>
+            </header>
+            <p id="receipt-download-note" class="form-hint" hidden></p>
+            <div class="page-actions">
+              <button id="receipt-download" type="button" class="btn btn--primary">
+                <i data-lucide="download" class="icon-sm"></i>Tải biên nhận (.json)
+              </button>
+              <a class="btn btn--secondary" href="../public/verify-receipt.html">
+                <i data-lucide="shield-check" class="icon-sm"></i>Kiểm tra biên nhận
+              </a>
+            </div>
+          </section>
+
           <aside class="alert alert--note page-section">
             <div>
               <p class="alert__title">Lưu ý</p>

@@ -9,7 +9,7 @@
 
   EC.STATUS = {
     // ---- Trạng thái một lần lưu chứng cứ (biên nhận) ----
-    recorded: { label: 'Đã ghi nhận', tone: 'pending', icon: 'clock', hint: 'Sẽ khóa lúc 23:59 cùng ngày' },
+    recorded: { label: 'Đã ghi nhận', tone: 'pending', icon: 'clock', hint: 'Chờ neo lên chuỗi công khai, neo xong mới khóa' },
     locked: { label: 'Đã khóa', tone: 'neutral', icon: 'lock', hint: 'Không ai sửa được, kể cả Tòa. Chờ Tòa kiểm tra' },
     checked: { label: 'Tòa đã kiểm tra', tone: 'match', icon: 'check', hint: 'Xem kết quả từng file trong chi tiết' },
 
@@ -27,6 +27,10 @@
     awaitingCompare: { label: 'Chưa đối chiếu', tone: 'empty', icon: 'clock' },
     savedMatch: { label: 'Khớp bản lưu chứng', tone: 'match', icon: 'check' },
     savedMismatch: { label: 'Khác bản lưu chứng', tone: 'mismatch', icon: 'circle-x' },
+
+    // ---- Từng bước kiểm tra biên nhận (trang công khai) ----
+    checkPass: { label: 'Đạt', tone: 'match', icon: 'check' },
+    checkFail: { label: 'Không đạt', tone: 'mismatch', icon: 'circle-x' },
   };
 
   /**

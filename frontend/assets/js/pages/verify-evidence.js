@@ -62,6 +62,8 @@
       savedAt = lastCheckedAt;
       document.querySelector('[data-field="savedAt"]').textContent = savedAt;
     }
+    // Đã đối chiếu (một phần): giữ giai đoạn đã lưu, không đổi được (UI-33); máy chủ cũng chặn nếu gửi giai đoạn khác
+    if (receipt.phase) phaseSelect.value = receipt.phase;
 
     render();
   }

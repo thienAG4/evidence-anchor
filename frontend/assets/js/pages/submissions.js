@@ -88,7 +88,7 @@
       { title: 'Đã ghi nhận', desc: `${r.recordedAt} · Hệ thống của Tòa ghi nhận`, done: true },
       {
         title: 'Đã khóa, không thể sửa',
-        desc: isLocked ? `${r.lockedAt} · Từ đây không ai sửa được, kể cả Tòa` : `Sẽ khóa lúc ${r.lockedAt}`,
+        desc: isLocked ? `${r.lockedAt} · Từ đây không ai sửa được, kể cả Tòa` : 'Chờ neo lên chuỗi công khai',
         done: isLocked,
       },
       {

@@ -50,7 +50,7 @@
       {
         label: 'Đã khóa, không thể sửa',
         state: isLocked ? 'done' : 'current',
-        time: isLocked ? receipt.lockedAt : `Sẽ khóa lúc ${receipt.lockedAt.split(' ')[0]} hôm nay`,
+        time: isLocked ? receipt.lockedAt : 'Chờ neo lên chuỗi công khai', // chưa khóa: không hiện giờ (UI-11)
       },
       { label: 'Tòa đã kiểm tra', state: isLocked ? courtStep.state : 'pending', time: isLocked ? courtStep.time : 'Chưa kiểm tra' },
     ];
@@ -84,5 +84,28 @@
     document.getElementById('receipt-tech-list').innerHTML = hashed.map((f) => `
       <li><span class="code-text">${EC.escape(f.code)}</span><span class="mono" title="${f.hash}">${f.hash}</span></li>`).join('');
   }
+
+  // ---------------------------------------------------------------- Tải biên nhận (UI-16)
+  const downloadButton = document.getElementById('receipt-download');
+  const downloadNote = document.getElementById('receipt-download-note');
+  if (receipt.status === 'recorded') {
+    downloadNote.hidden = false;
+    downloadNote.textContent = 'Biên nhận chưa khóa nên chưa có bằng chứng neo. Bạn vẫn tải được bản tạm (có chữ ký hệ thống); '
+      + 'hãy tải lại sau khi trạng thái là "Đã khóa" để có biên nhận hoàn chỉnh.';
+  }
+  downloadButton.addEventListener('click', async () => {
+    downloadButton.disabled = true;
+    try {
+      const complete = await EC.data.downloadReceipt(receipt.id);
+      downloadNote.hidden = false;
+      downloadNote.textContent = complete
+        ? `Đã tải biên nhận hoàn chỉnh bien-nhan-${receipt.id}.json (có bằng chứng neo). Giữ file này cùng file gốc.`
+        : `Đã tải biên nhận tạm bien-nhan-${receipt.id}.json. Tải lại sau khi khóa để có bằng chứng neo.`;
+    } catch (err) {
+      alert(`Không tải được biên nhận: ${err.message}`);
+    } finally {
+      downloadButton.disabled = false;
+    }
+  });
   });
 })(window.EC);
