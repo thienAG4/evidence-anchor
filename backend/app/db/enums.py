@@ -50,18 +50,20 @@ class MatchResult(str, enum.Enum):
     CHANGED = "CHANGED"
 
 
-class AnchorMode(str, enum.Enum):
-    PER_SUBMISSION = "PER_SUBMISSION"
-    DAILY = "DAILY"
+class ChainTxKind(str, enum.Enum):
+    ANCH = "ANCH"  # neo một đợt
+    KEYR = "KEYR"  # đăng ký khóa ký biên nhận, giao dịch đầu tiên của ví
+    NOOP = "NOOP"  # hủy giao dịch kẹt của một đợt (dùng lại nonce)
 
 
-class AnchorResult(str, enum.Enum):
+class ChainTxStatus(str, enum.Enum):
     CONFIRMED = "CONFIRMED"
+    FINALIZED = "FINALIZED"
     FAILED = "FAILED"
 
 
 class AnchorStatus(str, enum.Enum):
-    """Không lưu DB: suy ra từ Anchor/AnchorLeaf."""
+    """Không lưu DB: suy ra từ AnchorLeaf -> AnchorBatch -> ChainTx -> ChainTxResult."""
     PENDING_ANCHOR = "PENDING_ANCHOR"
     ANCHORED = "ANCHORED"
     ANCHOR_FAILED = "ANCHOR_FAILED"

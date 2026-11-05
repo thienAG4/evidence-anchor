@@ -17,7 +17,7 @@ party_only = require_role(UserRole.PARTY)
 
 
 def status_fields(db: Session, submission: Submission) -> dict:
-    status, _, _ = anchor_state(db, submission.id)
+    status, _ = anchor_state(db, submission.id)
     return {"status": status.value, "statusLabel": ANCHOR_STATUS_LABELS[status.value]}
 
 
@@ -59,18 +59,19 @@ def lookup(file: UploadFile = File(...), user: User = Depends(party_only), db: S
 
 @router.get("/receipts/{code}")
 def get_receipt(code: str, user: User = Depends(party_only), db: Session = Depends(get_db)):
-    """Biên nhận tạm có chữ ký; đã neo thì có thêm anchor (txHash, đường dẫn Merkle) để tự kiểm tra.
+    """Biên nhận tạm có chữ ký; đã neo thì có thêm anchor (bản ghi 164 byte từng file, đường dẫn Merkle, txHash)
+    để tự kiểm tra.
 
     receipt + signature + anchor: tải về đưa vào POST /verify. view: dữ liệu cho giao diện (kết quả Tòa đối chiếu).
     """
     submission = submission_service.get_own_by_code(db, user, code)
-    status, anchor, leaf = anchor_state(db, submission.id)
+    status, _ = anchor_state(db, submission.id)
     return {
         "status": status.value,
         "statusLabel": ANCHOR_STATUS_LABELS[status.value],
         "receipt": submission.receipt_json,
         "signature": submission.signature,
-        "anchor": anchor_view(anchor, leaf) if status.value == "ANCHORED" else None,
+        "anchor": anchor_view(db, submission) if status.value == "ANCHORED" else None,
         "view": receipt_service.receipt_view(db, submission, include_hashes=True),
     }
 

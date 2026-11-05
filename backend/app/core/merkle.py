@@ -1,6 +1,11 @@
 import hashlib
 
-NODE_PREFIX = b"\x01"  # tách nút trong khỏi lá, để nút trong không giả làm bundle hash được
+LEAF_PREFIX = b"\x00"  # lá = SHA256(0x00 ‖ recordHash)
+NODE_PREFIX = b"\x01"  # tách nút trong khỏi lá, để nút trong không giả làm lá được
+
+
+def record_leaf(record_hash: str) -> str:
+    return hashlib.sha256(LEAF_PREFIX + bytes.fromhex(record_hash)).hexdigest()
 
 
 def node_hash(left: str, right: str) -> str:
@@ -33,9 +38,34 @@ def build_tree(leaves: list[str]) -> tuple[str, list[list[dict]]]:
     return level[0][0], proofs
 
 
-def verify_proof(leaf: str, proof: list[dict], root: str) -> bool:
-    """Đi từ lá lên theo đường dẫn, phải ra đúng gốc đã neo."""
-    current = leaf
+def build_batch(groups: list[list[str]]) -> tuple[str, list[list[dict]]]:
+    """Cây hai tầng của một đợt neo. groups: recordHash theo từng nhóm (người ghi).
+
+    Tầng dưới: mỗi nhóm một cây trên lá SHA256(0x00 ‖ recordHash) -> subRoot. Tầng trên: cây trên các subRoot, subRoot
+    vào như một nút (không thêm 0x00). Trả root + mỗi lá {leafHash, groupPath, batchPath}, cùng thứ tự groups.
+    """
+    sub_roots, group_items = [], []
+    for record_hashes in groups:
+        leaves = [record_leaf(h) for h in record_hashes]
+        sub_root, paths = build_tree(leaves)
+        sub_roots.append(sub_root)
+        group_items.append(list(zip(leaves, paths)))
+    root, batch_paths = build_tree(sub_roots)
+    return root, [[{"leafHash": leaf, "groupPath": path, "batchPath": batch_paths[g]} for leaf, path in items]
+                  for g, items in enumerate(group_items)]
+
+
+def walk(node: str, proof: list[dict]) -> str:
+    """Đi từ một nút lên theo đường dẫn."""
     for step in proof:
-        current = node_hash(step["hash"], current) if step["side"] == "L" else node_hash(current, step["hash"])
-    return current == root
+        node = node_hash(step["hash"], node) if step["side"] == "L" else node_hash(node, step["hash"])
+    return node
+
+
+def verify_proof(leaf: str, proof: list[dict], root: str) -> bool:
+    return walk(leaf, proof) == root
+
+
+def verify_batch_proof(record_hash: str, group_path: list[dict], batch_path: list[dict], root: str) -> bool:
+    """recordHash -> lá -> subRoot (groupPath) -> root đợt (batchPath)."""
+    return walk(walk(record_leaf(record_hash), group_path), batch_path) == root

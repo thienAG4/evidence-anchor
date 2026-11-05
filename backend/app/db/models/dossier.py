@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CHAR, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import CHAR, BigInteger, DateTime, Enum, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,6 +20,8 @@ class Dossier(UUIDPk, Base):
     file_count: Mapped[int] = mapped_column(Integer, nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    record_seq: Mapped[int] = mapped_column(  # bản ghi D
+        BigInteger, ForeignKey("log_record.seq"), unique=True, nullable=False)
 
 
 class DossierItem(UUIDPk, Base):

@@ -20,7 +20,8 @@ def created_at_column() -> Mapped[datetime]:
 
 
 # Bảng chỉ ghi thêm (F6): migration REVOKE UPDATE, DELETE trên các bảng này cho tài khoản ứng dụng.
+# anchor_state là ngoại lệ (một dòng, được sửa nonce / cờ dừng).
 APPEND_ONLY_TABLES = (
-    "submission", "file_hash", "anchor", "anchor_leaf", "integrity_check",
-    "appraisal_step", "dossier", "dossier_item", "access_log",
+    "submission", "file_hash", "anchor_batch", "anchor_leaf", "chain_tx", "chain_tx_result", "integrity_check",
+    "appraisal_step", "dossier", "dossier_item", "access_log", "log_record",
 )

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, CheckConstraint, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import CHAR, BigInteger, CheckConstraint, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,7 +11,7 @@ from app.db.enums import CheckTarget, FileResult, MatchResult, SubmissionType
 
 
 class Submission(UUIDPk, Base):
-    """Một lần nộp = một biên nhận = một Bundle. Chỉ ghi thêm; trạng thái neo suy ra từ AnchorLeaf."""
+    """Một lần nộp = một biên nhận = một Bundle. Chỉ ghi thêm; trạng thái neo suy ra từ bản ghi của từng file."""
     __tablename__ = "submission"
     __table_args__ = (
         UniqueConstraint("case_id", "lot_no"),
@@ -57,6 +57,8 @@ class FileHash(UUIDPk, Base):
     baseline_file_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("file_hash.id"))
     result: Mapped[FileResult | None] = mapped_column(Enum(FileResult, name="file_result"))  # chỉ file trong lô
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    record_seq: Mapped[int] = mapped_column(  # bản ghi A (lưu chứng) hoặc E (file trong lô)
+        BigInteger, ForeignKey("log_record.seq"), unique=True, nullable=False)
 
 
 class IntegrityCheck(UUIDPk, Base):
@@ -79,3 +81,5 @@ class IntegrityCheck(UUIDPk, Base):
     phase: Mapped[str | None] = mapped_column(String(100))  # giai đoạn tố tụng khi đối chiếu (giao diện thư ký)
     checked_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("user_account.id"), nullable=False)
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    record_seq: Mapped[int] = mapped_column(  # bản ghi E (đối chiếu)
+        BigInteger, ForeignKey("log_record.seq"), unique=True, nullable=False)

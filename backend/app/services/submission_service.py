@@ -1,4 +1,4 @@
-"""Lưu chứng của đương sự (F1): băm file, tạo biên nhận, ghi Submission + FileHash (chỉ ghi thêm)."""
+"""Lưu chứng của đương sự (F1): băm file, tạo biên nhận, ghi Submission + FileHash + bản ghi A (chỉ ghi thêm)."""
 from datetime import datetime
 from decimal import Decimal
 from typing import BinaryIO
@@ -7,11 +7,13 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.hashing import BUNDLE_SCHEME, create_bundle, hash_evidence, hash_stream, now_vn
+from app.core.log_record import EVENT_A
 from app.core.receipt import build_receipt, sign
 from app.db.enums import SubmissionType
 from app.db.models import FileHash, Submission, User
 from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
+from app.services.log_service import append_record, unix_seconds
 
 
 def next_receipt_code(db: Session) -> str:
@@ -42,11 +44,13 @@ def create_self_submission(db: Session, owner: User, items: list[tuple[str, Bina
     db.flush()
     for f in files:
         sleep = f.get("sleepAfterSeconds")
+        record = append_record(db, event_type=EVENT_A, file_hash=f["fileHash"], actor_id=owner.id,
+                               ts=unix_seconds(f["hashedAt"]))
         db.add(FileHash(
             submission_id=submission.id, position=f["position"], file_name=f["fileName"][:255],
             file_code=f["fileCode"], file_hash=f["fileHash"], hashed_at=f["hashedAt"],
             time_hash=f["timeHash"], leaf_hash=f["leafHash"],
-            sleep_after_seconds=Decimal(str(sleep)) if sleep is not None else None,
+            sleep_after_seconds=Decimal(str(sleep)) if sleep is not None else None, record_seq=record.seq,
         ))
     db.commit()
     return submission

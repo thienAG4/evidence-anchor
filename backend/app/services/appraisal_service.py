@@ -6,11 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.hashing import hash_stream
+from app.core.log_record import EVENT_C
 from app.db.enums import AppraisalStepType, MatchResult
-from app.db.models import AppraisalStep, FileHash, User
+from app.db.models import AppraisalStep, FileHash, Submission, User
 from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
 from app.labels import APPRAISAL_STEP_LABELS, DISCLAIMER, recorded_result, vn_time
+from app.services.log_service import append_record, result_code, unix_seconds
 
 
 def steps_of(db: Session, evidence: FileHash) -> list[AppraisalStep]:
@@ -32,8 +34,12 @@ def record_step(db: Session, evidence: FileHash, clerk: User, step: AppraisalSte
                            "File khác bản đã ghi lúc nhận, không gửi giám định được.")
     elif last is None or last.step != AppraisalStepType.SEND:
         raise AppError(409, ErrorCode.INVALID_STATE, "Chưa ghi bước gửi giám định nên chưa nhận về được.")
+    recorded_at = datetime.now(timezone.utc)
+    log = append_record(db, event_type=EVENT_C, file_hash=file_hash, actor_id=clerk.id, ts=unix_seconds(recorded_at),
+                        result=result_code(result), case_id=db.get(Submission, evidence.submission_id).case_id,
+                        ref_seq=evidence.record_seq)  # C trỏ E
     record = AppraisalStep(file_id=evidence.id, step=step, file_hash=file_hash, result=result,
-                           recorded_by=clerk.id, recorded_at=datetime.now(timezone.utc))
+                           recorded_by=clerk.id, recorded_at=recorded_at, record_seq=log.seq)
     db.add(record)  # RETURN mà khác E vẫn ghi: KHÁC BẢN ĐÃ GHI, biết khác ở bước nào (F4-AC2)
     db.commit()
     return record

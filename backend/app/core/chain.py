@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from web3 import Web3
+from web3.exceptions import TransactionNotFound
 
 from app.core.hashing import vietnam_tz
 
@@ -58,6 +59,51 @@ def _send_anchor_tx(hash_value: str) -> dict:
         "blockTimeISO": datetime.fromtimestamp(block.timestamp, tz=timezone.utc).isoformat(),
         "blockTimeVN": datetime.fromtimestamp(block.timestamp, tz=vietnam_tz).strftime("%d/%m/%Y %H:%M:%S"),
     }
+
+
+# ---------- Dùng cho worker neo (app.workers.anchor_worker): nonce do AnchorState cấp, không chờ xác nhận ----------
+
+address = account.address
+
+
+def pending_nonce() -> int:
+    return w3.eth.get_transaction_count(account.address, "pending")
+
+
+def sign(nonce: int, data: bytes, bump: int = 0) -> tuple[str, bytes]:
+    """Ký giao dịch 0 ETH gửi cho chính mình, Input Data = data. bump > 0: gửi lại giao dịch kẹt, phí nhân 2^bump."""
+    priority = w3.to_wei(2, "gwei") * 2 ** bump
+    tx = {
+        "chainId": CHAIN_ID,
+        "to": account.address,
+        "value": 0,
+        "data": data,
+        "nonce": nonce,
+        "gas": 21000 + sum(16 if b else 4 for b in data),  # gas nội tại của giao dịch gửi tới ví (không có code)
+        "maxPriorityFeePerGas": priority,
+        "maxFeePerGas": w3.eth.get_block("latest")["baseFeePerGas"] * 2 * 2 ** bump + priority,
+    }
+    signed = account.sign_transaction(tx)
+    tx_hash = signed.hash.hex()
+    return (tx_hash if tx_hash.startswith("0x") else "0x" + tx_hash), signed.raw_transaction
+
+
+def broadcast(raw: bytes) -> None:
+    w3.eth.send_raw_transaction(raw)
+
+
+def receipt(tx_hash: str) -> dict | None:
+    """None khi giao dịch chưa lên khối."""
+    try:
+        r = w3.eth.get_transaction_receipt(tx_hash)
+    except TransactionNotFound:
+        return None
+    return {"success": r.status == 1, "blockNumber": r.blockNumber,
+            "blockTime": w3.eth.get_block(r.blockNumber).timestamp}
+
+
+def finalized_block() -> int:
+    return w3.eth.get_block("finalized").number
 
 
 def verify_on_chain(tx_hash: str, expected_hash: str, expected_sender: str = None) -> bool:

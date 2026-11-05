@@ -7,11 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.hashing import hash_stream, hash_text
+from app.core.log_record import EVENT_D, EVENT_E
 from app.db.enums import CaseStatus, CheckTarget, MatchResult
 from app.db.models import CourtCase, Dossier, DossierItem, IntegrityCheck, User
 from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
 from app.labels import DISCLAIMER, recorded_result, vn_time
+from app.services.log_service import append_record, result_code, unix_seconds
 
 
 def catalog_hash(doc_names: list[str], file_hashes: list[str]) -> str:
@@ -33,8 +35,12 @@ def create_dossier(db: Session, case: CourtCase, clerk: User, doc_names: list[st
         raise AppError(409, ErrorCode.APPEAL_REQUIRED, "Chỉ chốt hồ sơ khi vụ đang có kháng cáo hoặc kháng nghị.")
     names = _check_names(doc_names, len(streams))
     hashes = [hash_stream(s) for s in streams]
-    dossier = Dossier(case_id=case.id, appeal_type=case.appeal_type, catalog_hash=catalog_hash(names, hashes),
-                      file_count=len(hashes), created_by=clerk.id, created_at=datetime.now(timezone.utc))
+    catalog, created_at = catalog_hash(names, hashes), datetime.now(timezone.utc)
+    # D không phải phép so nên result = 0 như A
+    record = append_record(db, event_type=EVENT_D, file_hash=catalog, actor_id=clerk.id,
+                           ts=unix_seconds(created_at), case_id=case.id)
+    dossier = Dossier(case_id=case.id, appeal_type=case.appeal_type, catalog_hash=catalog, file_count=len(hashes),
+                      created_by=clerk.id, created_at=created_at, record_seq=record.seq)
     db.add(dossier)
     db.flush()
     for i, (name, h) in enumerate(zip(names, hashes), 1):
@@ -56,8 +62,12 @@ def check_dossier(db: Session, dossier: Dossier, clerk: User, doc_names: list[st
     names = _check_names(doc_names, len(streams))
     recomputed = catalog_hash(names, [hash_stream(s) for s in streams])
     result = MatchResult.UNCHANGED if recomputed == dossier.catalog_hash else MatchResult.CHANGED
+    checked_at = datetime.now(timezone.utc)
+    record = append_record(db, event_type=EVENT_E, file_hash=recomputed, actor_id=clerk.id,
+                           ts=unix_seconds(checked_at), result=result_code(result), case_id=dossier.case_id,
+                           ref_seq=dossier.record_seq)  # E trỏ D
     check = IntegrityCheck(target=CheckTarget.DOSSIER, dossier_id=dossier.id, result=result,
-                           checked_by=clerk.id, checked_at=datetime.now(timezone.utc))
+                           checked_by=clerk.id, checked_at=checked_at, record_seq=record.seq)
     db.add(check)
     db.commit()
     return check

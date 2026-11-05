@@ -22,8 +22,10 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
+from app.core import log_record as lr
 from app.core.hashing import compute_bundle, hash_file, leaf_hash
-from app.core.merkle import verify_proof
+from app.core.anchor_payload import decode_anch
+from app.core.merkle import verify_batch_proof
 from app.core.signing import verify_signature
 
 results = []  # (trạng thái, tên bước)
@@ -73,7 +75,7 @@ def make_sample_files(folder: Path) -> list[Path]:
 
 
 def verify_on_sepolia(anchor: dict) -> None:
-    """Đọc giao dịch trên Sepolia (chỉ đọc, không cần ETH): Input Data phải là gốc Merkle đã neo."""
+    """Đọc giao dịch trên Sepolia (chỉ đọc, không cần ETH): Input Data phải là payload của đợt neo."""
     from dotenv import load_dotenv
     from web3 import Web3
 
@@ -83,7 +85,7 @@ def verify_on_sepolia(anchor: dict) -> None:
     status = w3.eth.get_transaction_receipt(anchor["txHash"]).status
     on_chain = tx["input"].hex().removeprefix("0x")
     step("Giao dịch trên Sepolia thành công", status == 1, anchor["explorerUrl"])
-    step("Input Data của giao dịch = gốc Merkle đã neo", on_chain == anchor["rootHash"], on_chain[:16] + "…")
+    step("Input Data của giao dịch = payload đợt neo", on_chain == anchor["payload"], on_chain[:16] + "…")
     key = os.environ.get("PRIVATE_KEY")
     if key:
         wallet = w3.eth.account.from_key(key).address
@@ -182,10 +184,20 @@ def main():
          and bundle["bundleHash"] == receipt["bundle"]["bundleHash"], bundle["bundleHash"][:16] + "…")
     anchor = receipt_body.get("anchor")
     if anchor:
-        step("Đường dẫn Merkle từ Bundle đi tới đúng gốc đã neo",
-             verify_proof(receipt["bundle"]["bundleHash"], anchor["merkleProof"], anchor["rootHash"]))
+        records = {r["fileCode"]: r for r in anchor["records"]}
+        step("Mỗi file có bản ghi A 164 byte chứa đúng hash file", all(
+            (r := records.get(f["fileCode"])) and len(raw := bytes.fromhex(r["raw"])) == lr.RECORD_SIZE
+            and lr.record_hash(raw) == r["recordHash"] and lr.decode(raw)["fileHash"] == f["fileHash"]
+            and lr.decode(raw)["eventType"] == lr.EVENT_A for f in receipt["files"]))
+        step("Đường dẫn Merkle hai tầng từ từng bản ghi đi tới đúng root đợt neo",
+             all(verify_batch_proof(r["recordHash"], r["groupPath"], r["batchPath"], r["root"])
+                 for r in records.values()))
+        step("Dữ liệu đợt neo (payload) chứa root và seq của bản ghi", all(
+            (p := decode_anch(bytes.fromhex(r["payload"])))["root"] == r["root"] and p["fromSeq"] <= r["seq"] <= p["toSeq"]
+            for r in records.values()))
         try:
-            verify_on_sepolia(anchor)
+            for r in {r["txHash"]: r for r in records.values()}.values():  # các file thường cùng 1 giao dịch
+                verify_on_sepolia(r)
         except Exception as exc:
             step("Đọc giao dịch trên Sepolia", False, repr(exc))
     else:

@@ -1,29 +1,41 @@
-"""Tiến trình riêng: per_submission neo từng lần nộp chưa neo; thử lại khi FAILED. (daily: chưa làm.)
+"""Tiến trình riêng: mỗi vòng theo dõi giao dịch đã gửi, chốt một đợt từ các LogRecord chưa neo rồi gửi giao dịch
+ANCH (per_submission: đợt chốt ngay vòng sau khi có bản ghi; daily: chưa làm). Giao dịch đầu tiên của ví là KEYR.
 
 Chạy (từ thư mục backend/): ..\\venv\\Scripts\\python.exe -m app.workers.anchor_worker
 
-Tách khỏi server API vì: (1) chỉ 1 nơi gửi giao dịch -> không trùng nonce dù chạy nhiều worker API;
+Tách khỏi server API vì: (1) chỉ 1 nơi gửi giao dịch -> nonce cấp từ AnchorState không trùng;
 (2) nạp web3 trong tiến trình uvicorn làm --reload trên Windows treo.
+
+chain cần: address, pending_nonce(), sign(nonce, data, bump) -> (tx_hash, raw), broadcast(raw),
+receipt(tx_hash) -> {success, blockNumber, blockTime} | None, finalized_block().
 """
 import logging
 import threading
 
 from app.config import settings
+from app.db.models import AnchorState
 from app.db.session import SessionLocal
-from app.services.anchor_service import anchor_submission, submissions_to_anchor
+from app.services import anchor_service
 
 logger = logging.getLogger("anchor_worker")
 
 
 def run_once(chain) -> int:
-    """Neo các lần nộp đang chờ. Trả về số lần đã thử."""
-    count = 0
+    """Một vòng neo. Trả về số bản ghi trong đợt vừa chốt (0 nếu không chốt đợt nào)."""
     with SessionLocal() as db:
-        for submission in submissions_to_anchor(db):
-            anchor = anchor_submission(db, chain, submission)
-            logger.info("Neo %s: %s %s", submission.receipt_code, anchor.result.value, anchor.tx_hash or anchor.error)
-            count += 1
-    return count
+        anchor_service.sync_nonce(db, chain)
+        anchor_service.poll_transactions(db, chain)
+        if db.get(AnchorState, 1).halted:
+            logger.warning("Job neo đang dừng: %s", db.get(AnchorState, 1).halted_reason)
+            return 0
+        anchor_service.ensure_key_registered(db, chain)
+        batch = anchor_service.cut_batch(db)
+        anchor_service.send_unsent_batches(db, chain)
+        anchor_service.poll_transactions(db, chain)  # mạng nhanh (hoặc chuỗi giả khi kiểm thử): có kết quả ngay
+        if not batch:
+            return 0
+        logger.info("Đợt %s: bản ghi %s..%s, root %s", batch.batch_no, batch.from_seq, batch.to_seq, batch.root)
+        return batch.to_seq - batch.from_seq + 1
 
 
 def main():
