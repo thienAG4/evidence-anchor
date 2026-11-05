@@ -266,7 +266,7 @@ evidence-anchor/
 ├── frontend/                         # xem frontend/README.md
 │   ├── pages/                        # auth, litigant (lưu chứng, biên nhận), clerk, public (kiểm tra biên nhận)
 │   └── assets/                       # css, js (data/api.js gọi API, data/ots.js đóng dấu OpenTimestamps)
-├── docs/                             # proposal, backlog, entities, api, test-vectors.json, postman/
+├── docs/                             # proposal, backlog, entities, api, test-vectors.json, postman/, demo/
 └── docker-compose.yml                # PostgreSQL cho máy dev
 ```
 
@@ -341,6 +341,17 @@ do admin tạo (`POST /admin/users`).
 
 ## 8. Kiểm thử
 
+**Video demo** ([`docs/demo/EvidenceChain-demo-tong-hop.mp4`](docs/demo/EvidenceChain-demo-tong-hop.mp4), khoảng
+2 phút): chạy thật trên Chrome với ví neo Sepolia và máy chủ lịch OpenTimestamps, gồm 5 phần:
+
+1. Lưu chứng 2 file; trình duyệt tự đóng dấu OpenTimestamps, tải file .ots.
+2. Bấm Neo ngay: đợt neo lên Sepolia, trang chuyển sang "Đã neo, chờ chốt".
+3. Chế độ neo theo ngày: không bấm gì, đúng mốc khóa thì hệ thống tự neo (UI-12).
+4. Biên nhận đã chốt: tự kiểm tra trên trang công khai, đạt 13/13 mục (UI-16).
+5. Đưa vào file bị sửa 1 bit: báo không hợp lệ, chỉ đúng file đó.
+
+Video ghép từ các khung hình chụp sau mỗi thao tác; vòng tròn cam là chỗ bấm chuột, nhãn đen là thao tác.
+
 ```powershell
 cd backend
 ..\venv\Scripts\python.exe -m pytest tests/test_vectors.py tests/test_ots.py
@@ -376,6 +387,7 @@ venv\Scripts\python.exe backend/scripts/e2e_court.py                      # quy 
 | [`docs/entities.md`](docs/entities.md) | Các bảng, cột, quan hệ, luồng worker neo |
 | [`docs/test-vectors.json`](docs/test-vectors.json) | Dữ liệu mẫu và mẫu phải từ chối, cho người viết lại thuật toán |
 | [`docs/postman/`](docs/postman) | Collection Postman để gọi thử API |
+| [`docs/demo/`](docs/demo) | Video demo 5 phần (mục 8) |
 | [`frontend/README.md`](frontend/README.md) | Cấu trúc giao diện, cách chạy riêng frontend |
 
 ## 10. Phạm vi và giới hạn của đồ án
