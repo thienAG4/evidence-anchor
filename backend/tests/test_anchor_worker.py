@@ -82,7 +82,7 @@ def env(app_modules, monkeypatch):
     from app.db.enums import UserRole
     from app.db.models import User
     db = app_modules["SessionLocal"]()
-    for table in ("chain_tx_result", "chain_tx", "anchor_leaf", "anchor_batch", "file_hash", "submission",
+    for table in ("ots_stamp", "chain_tx_result", "chain_tx", "anchor_leaf", "anchor_batch", "file_hash", "submission",
                   "integrity_check", "appraisal_step", "dossier_item", "dossier", "log_record", "access_log",
                   "case_participant", "court_case", "user_account"):
         db.execute(text(f"DELETE FROM {table}"))
@@ -248,3 +248,59 @@ def test_foreign_tx_halts(env):
     state = env["db"].get(AnchorState, 1)
     assert state.halted and "vượt next_nonce" in state.halted_reason
     assert batches(env) == [(1, 1, 1)]  # bản ghi mới không vào đợt khi đang dừng
+
+
+# ---------------------------------------------------------------- OpenTimestamps phía server
+
+def _ots_submission(env):
+    """Một lần lưu chứng 1 file (bản ghi A) của người ghi trong env."""
+    from app.db.enums import SubmissionType
+    from app.db.models import FileHash, Submission
+    add(env, datetime(2026, 11, 5, 9, 0, tzinfo=VN))
+    sub = Submission(receipt_code="TX-9001", type=SubmissionType.SELF, owner_id=env["user"].id, file_count=1,
+                     submitted_at=datetime(2026, 11, 5, 9, 0, tzinfo=VN), bundle_scheme="x", habc="0" * 64,
+                     bundled_at="x", bundle_time_hash="0" * 64, bundle_hash="0" * 64, signature="0x",
+                     receipt_json={})
+    env["db"].add(sub)
+    env["db"].flush()
+    env["db"].add(FileHash(submission_id=sub.id, position=1, file_name="a.pdf", file_code="TX-9001-1",
+                           file_hash="ab" * 32, hashed_at="x", time_hash="0" * 64, leaf_hash="0" * 64, record_seq=1))
+    env["db"].commit()
+    return sub
+
+
+def test_ots_save_pending_rules(env):
+    from test_ots import CALS, browser_ots
+    from app.errors.handlers import AppError
+    from app.services import ots_service
+    sub = _ots_submission(env)
+    with pytest.raises(AppError, match="đúng hash"):
+        ots_service.save_pending(env["db"], sub, "TX-9001-1", browser_ots("cd" * 32, CALS))
+    with pytest.raises(AppError, match="cho phép"):  # job nâng cấp sẽ gọi địa chỉ trong file: chặn địa chỉ lạ
+        ots_service.save_pending(env["db"], sub, "TX-9001-1", browser_ots("ab" * 32, ["http://127.0.0.1:5434/"]))
+    with pytest.raises(AppError):
+        ots_service.save_pending(env["db"], sub, "TX-9001-1", b"rac")
+    ots_service.save_pending(env["db"], sub, "TX-9001-1", browser_ots("ab" * 32, CALS))
+    with pytest.raises(AppError, match="đã có"):
+        ots_service.save_pending(env["db"], sub, "TX-9001-1", browser_ots("ab" * 32, CALS))
+    assert ots_service.view(env["db"], sub)[0]["status"] == "PENDING"
+
+
+def test_ots_upgrade_and_alarm(env, caplog):
+    from test_ots import CALS, browser_ots
+    from app.db.models import OtsStamp
+    from app.services import ots_service
+    sub = _ots_submission(env)
+    ots_service.save_pending(env["db"], sub, "TX-9001-1", browser_ots("ab" * 32, CALS))
+    later = datetime.now(timezone.utc) + timedelta(hours=49)
+    still_pending = lambda data: (data, False)  # noqa: E731
+    with caplog.at_level("ERROR"):
+        assert ots_service.upgrade_pending(env["db"], later, upgrade=still_pending) ==             {"upgraded": 0, "pending": 1, "late": 1}
+    assert "chưa xác nhận sau 48 giờ" in caplog.text
+    complete = browser_ots("ab" * 32, CALS[:1], height=870001)
+    assert ots_service.upgrade_pending(env["db"], later, upgrade=lambda data: (complete, True))["upgraded"] == 1
+    env["db"].expire_all()
+    stamp = env["db"].query(OtsStamp).one()
+    assert stamp.bitcoin_block == 870001 and stamp.ots_pending != stamp.ots_complete  # bản chờ giữ nguyên
+    view = ots_service.view(env["db"], sub)[0]
+    assert view["status"] == "COMPLETE" and view["bitcoinBlock"] == 870001

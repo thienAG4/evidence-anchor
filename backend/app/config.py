@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     # Demo đặt mốc vài phút tới để xem tự khóa; nút "Neo ngay" chốt sớm các bản ghi đang chờ.
     anchor_daily_cutoff: str = "23:59"
     anchor_max_replacements: int = 5  # giao dịch kẹt gửi lại quá số lần này (phí x2 mỗi lần) thì dừng job neo
+    # OpenTimestamps (6.9): trình duyệt đóng dấu; server chuyển tiếp khi máy chủ lịch chặn CORS, nâng cấp mỗi giờ.
+    # Chỉ các máy chủ lịch này (máy chủ gộp và máy chủ lịch phía sau) được ghi trong file .ots nhận về.
+    ots_calendars: list[str] = ["https://a.pool.opentimestamps.org", "https://b.pool.opentimestamps.org",
+                                "https://a.pool.eternitywall.com", "https://ots.btc.catallaxy.com"]
+    ots_upgrade_seconds: int = 3600
+    ots_alarm_hours: int = 48
     # Thư ký chỉ đối chiếu biên nhận đã neo ("Đã khóa"). Máy dev chưa chạy worker neo thì đặt false để test.
     require_anchor_before_verify: bool = True
     # Giao diện chạy riêng (Live Server :5500, mở file trực tiếp = origin "null") được gọi API

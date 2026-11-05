@@ -1,5 +1,7 @@
 """POST/GET /submissions, POST /submissions/lookup, GET /receipts/{code}, GET /signing-key."""
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+import base64
+
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -10,7 +12,9 @@ from app.db.session import get_db
 from app.dependencies.roles import require_role
 from app.dependencies.upload_stream import require_file, require_files
 from app.labels import ANCHOR_STATUS_LABELS
-from app.services import receipt_service, submission_service
+from app.errors.codes import ErrorCode
+from app.errors.handlers import AppError
+from app.services import ots_service, receipt_service, submission_service
 from app.services.anchor_service import anchor_state, anchor_view
 
 router = APIRouter(tags=["submissions"])
@@ -73,8 +77,36 @@ def get_receipt(code: str, user: User = Depends(party_only), db: Session = Depen
         "receipt": submission.receipt_json,
         "signature": submission.signature,
         "anchor": anchor_view(db, submission) if status.value == "ANCHORED" else None,
+        "ots": ots_service.view(db, submission),
         "view": receipt_service.receipt_view(db, submission, include_hashes=True),
     }
+
+
+@router.post("/receipts/{code}/ots", status_code=201)
+def upload_ots(code: str, fileCode: str = Form(...), ots: UploadFile = File(...), user: User = Depends(party_only),
+               db: Session = Depends(get_db)):
+    """Trình duyệt gửi file .ots bản chờ vừa đóng dấu (OpenTimestamps, 6.9) để server nâng cấp mỗi giờ."""
+    submission = submission_service.get_own_by_code(db, user, code)
+    stamp = ots_service.save_pending(db, submission, fileCode, ots.file.read(100_000))
+    return {"fileCode": fileCode.strip().upper(), "status": ots_service.PENDING,
+            "stampedAt": stamp.stamped_at.isoformat()}
+
+
+@router.get("/receipts/{code}/files/{file_code}/ots")
+def download_ots(code: str, file_code: str, user: User = Depends(party_only), db: Session = Depends(get_db)):
+    """Tải file .ots của một file (bản hoàn chỉnh nếu đã có, không thì bản chờ)."""
+    submission = submission_service.get_own_by_code(db, user, code)
+    item = next((i for i in ots_service.view(db, submission) if i["fileCode"] == file_code.strip().upper()), None)
+    if item is None:
+        raise AppError(404, ErrorCode.RECORD_NOT_FOUND, "File này chưa có dấu OpenTimestamps.")
+    return Response(base64.b64decode(item["ots"]), media_type="application/octet-stream",
+                    headers={"Content-Disposition": f'attachment; filename="{item["fileCode"]}.ots"'})
+
+
+@router.post("/ots/relay/{index}")
+async def ots_relay(index: int, request: Request, _: User = Depends(party_only)):
+    """Dự phòng khi máy chủ lịch chặn CORS (6.9): chuyển tiếp 32 byte đã trộn nonce, server không thấy fileHash."""
+    return Response(ots_service.relay(index, await request.body()), media_type="application/octet-stream")
 
 
 @router.get("/signing-key")

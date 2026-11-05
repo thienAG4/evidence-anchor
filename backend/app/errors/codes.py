@@ -41,6 +41,9 @@ class ErrorCode(str, Enum):
     EMAIL_EXISTS = "EMAIL_EXISTS"
     # Blockchain
     CHAIN_UNAVAILABLE = "CHAIN_UNAVAILABLE"  # RPC lỗi (dùng cho POST /verify)
+    INVALID_OTS = "INVALID_OTS"  # file .ots hỏng, sai hash file, hoặc máy chủ lịch ngoài danh sách cho phép
+    OTS_EXISTS = "OTS_EXISTS"  # file đã có dấu OpenTimestamps
+    CALENDAR_UNAVAILABLE = "CALENDAR_UNAVAILABLE"  # máy chủ lịch OpenTimestamps không trả lời
     # Chung
     VALIDATION_ERROR = "VALIDATION_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"

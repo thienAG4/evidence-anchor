@@ -246,7 +246,10 @@
       files.forEach((file) => form.append('files', file, file.name));
       const created = await EC.api('/submissions', { method: 'POST', form });
       const detail = await EC.api(`/receipts/${encodeURIComponent(created.receiptCode)}`);
-      return upsert(toReceipt(detail.view));
+      const receipt = upsert(toReceipt(detail.view));
+      // OpenTimestamps ngay lúc lưu chứng (6.9); trang chi tiết biên nhận đóng dấu lại file nào còn thiếu
+      if (EC.ots) EC.ots.stampReceipt(receipt.id, receipt.files.filter((f) => f.hash)).catch(() => {});
+      return receipt;
     },
 
     /** Thư ký xem trước: so 1 file trong hồ sơ Tòa với file cùng mã. Trả 'match' | 'mismatch', không ghi */
@@ -264,7 +267,7 @@
      */
     async downloadReceipt(receiptId) {
       const body = await EC.api(`/receipts/${encodeURIComponent(receiptId)}`);
-      const payload = { receipt: body.receipt, signature: body.signature, anchor: body.anchor };
+      const payload = { receipt: body.receipt, signature: body.signature, anchor: body.anchor, ots: body.ots };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const link = Object.assign(document.createElement('a'), {
         href: URL.createObjectURL(blob), download: `bien-nhan-${receiptId}.json`,
