@@ -71,6 +71,7 @@ def upgrade() -> None:
         op.create_unique_constraint(f'{table}_record_seq_key', table, ['record_seq'])
 
     op.execute("DELETE FROM anchor_leaf")
+    op.execute("DELETE FROM anchor_finality")  # 4f2c8a1d9e37 tham chiếu anchor
     op.execute("DELETE FROM anchor")
     op.drop_column('anchor_leaf', 'submission_id')  # kéo theo unique (anchor_id, submission_id) và index
     op.add_column('anchor_leaf', sa.Column('record_seq', sa.BigInteger(), nullable=False))
@@ -147,6 +148,7 @@ def _backfill(bind) -> None:
 
 def downgrade() -> None:
     op.execute("DELETE FROM anchor_leaf")
+    op.execute("DELETE FROM anchor_finality")  # 4f2c8a1d9e37 tham chiếu anchor
     op.execute("DELETE FROM anchor")
     op.drop_index(op.f('ix_anchor_leaf_record_seq'), table_name='anchor_leaf')
     op.drop_column('anchor_leaf', 'record_seq')
