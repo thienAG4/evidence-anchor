@@ -130,11 +130,13 @@ Mọi trang đọc dữ liệu qua `EC.data` trong `assets/js/data/api.js`; tran
 |---|---|
 | Đăng nhập | `POST /auth/login` → token lưu ở `localStorage`; vào trang đăng nhập = đăng xuất |
 | Lưu chứng cứ | `POST /submissions` (gửi file, **máy chủ băm rồi bỏ file**, không lưu file); chỉ nhận PDF, ảnh, video, âm thanh |
-| Biên nhận của tôi, chi tiết | `GET /submissions`, `GET /receipts/{mã}` |
+| Biên nhận của tôi, chi tiết | `GET /submissions`, `GET /receipts/{mã}`; nút **Tải biên nhận (.json)** = biên nhận + chữ ký + bằng chứng neo |
+| Kiểm tra biên nhận (`pages/public/verify-receipt.html`, **không cần đăng nhập**, link ở trang đăng nhập) | `POST /verify`: biên nhận .json + file gốc → từng bước Đạt / Không đạt |
 | Các lần lưu chứng cứ (thư ký) | `GET /clerk/receipts` — chỉ đương sự trong **vụ án mà thư ký phụ trách** |
 | Đối chiếu | chọn file: `POST /clerk/receipts/{mã}/compare` (xem trước, không ghi); "Lưu kết quả": `POST …/verifications` (máy chủ băm lại, ghi kèm giai đoạn) |
 | Đương sự (thư ký) | `GET /clerk/litigants` |
 
 Trạng thái biên nhận: **Đã ghi nhận** = chưa neo lên blockchain → **Đã khóa** = đã neo (không ai sửa được) →
-**Tòa đã kiểm tra** = thư ký đã lưu kết quả đối chiếu. Chỉ đối chiếu được sau khi đã khóa, nên muốn thử trang
+**Tòa đã kiểm tra** = thư ký đã lưu kết quả đối chiếu **đủ n/n file** (đối chiếu dở dang: các file còn lại hiện
+"Đang kiểm tra"). Mỗi file chỉ đối chiếu 1 lần; giai đoạn đối chiếu khóa theo lần lưu đầu. Chỉ đối chiếu được sau khi đã khóa, nên muốn thử trang
 Đối chiếu phải chạy worker neo (cần `PRIVATE_KEY` ví test có Sepolia ETH — README gốc, mục 5.1).

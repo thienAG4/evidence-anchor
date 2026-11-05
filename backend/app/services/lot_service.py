@@ -12,7 +12,9 @@ from typing import BinaryIO
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.hashing import LOT_SCHEME, compute_lot_bundle, create_lot_bundle, hash_evidence, hash_stream, now_vn
+from app.core.hashing import (LOT_SCHEME, compute_lot_bundle, create_lot_bundle, hash_concat, hash_evidence,
+                              hash_stream, now_vn)
+from app.core.log_record import EVENT_E
 from app.core.receipt import build_receipt, sign
 from app.db.enums import CaseStatus, CheckTarget, FileResult, MatchResult, SubmissionType
 from app.db.models import CourtCase, FileHash, IntegrityCheck, Submission, User
@@ -20,6 +22,7 @@ from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
 from app.labels import DISCLAIMER, file_result, recorded_result
 from app.services.anchor_service import anchor_state
+from app.services.log_service import append_record, result_code, unix_seconds
 from app.services.submission_service import next_receipt_code
 
 
@@ -94,11 +97,15 @@ def create_lot(db: Session, case: CourtCase, clerk: User, place: str | None, fil
     db.flush()
     for f in files:
         sleep = f.get("sleepAfterSeconds")
+        record = append_record(db, event_type=EVENT_E, file_hash=f["fileHash"], actor_id=clerk.id,
+                               ts=unix_seconds(f["hashedAt"]), result=result_code(f["result"]), case_id=case.id,
+                               ref_seq=f["baseline"].record_seq if f["baseline"] else None)  # E trỏ A
         db.add(FileHash(
             submission_id=lot.id, position=f["position"], file_name=f["fileName"][:255], file_code=f["fileCode"],
             file_hash=f["fileHash"], hashed_at=f["hashedAt"], time_hash=f["timeHash"], leaf_hash=f["leafHash"],
             sleep_after_seconds=Decimal(str(sleep)) if sleep is not None else None,
             baseline_file_id=f["baseline"].id if f["baseline"] else None, result=f["result"], checked_at=checked_at,
+            record_seq=record.seq,
         ))
     db.commit()
     return lot
@@ -132,7 +139,7 @@ def lot_view(db: Session, lot: Submission, show_baseline: bool) -> dict:
     # Chưa tính lại lần nào: lô khớp chính nó tại lúc nhận
     lot_result = recorded_result(check.result, check.checked_at) if check else recorded_result(
         MatchResult.UNCHANGED, lot.submitted_at)
-    status, _, _ = anchor_state(db, lot.id)
+    status, _ = anchor_state(db, lot.id)
     files = []
     for f in db.scalars(select(FileHash).where(FileHash.submission_id == lot.id).order_by(FileHash.position)):
         item = {"evidenceId": str(f.id), "position": f.position, "fileName": f.file_name, "fileCode": f.file_code,
@@ -166,29 +173,39 @@ def recheck_lot(db: Session, lot: Submission, clerk: User, streams: list[BinaryI
     times_by_hash = defaultdict(list)
     for f in db.scalars(select(FileHash).where(FileHash.submission_id == lot.id).order_by(FileHash.position)):
         times_by_hash[f.file_hash].append(f.hashed_at)
-    entries, unknown = [], False
+    entries, hashes, unknown = [], [], False
     for stream in streams:
         file_hash = hash_stream(stream)
+        hashes.append(file_hash)
         if times_by_hash[file_hash]:
             entries.append({"fileHash": file_hash, "hashedAt": times_by_hash[file_hash].pop(0)})
         else:
             unknown = True  # file không thuộc lô (hoặc đã bị sửa)
     if unknown or not entries:
         result = MatchResult.CHANGED
+        # Không tính được hash tổng: bản ghi E giữ dấu vân tay của bộ file đã chọn
+        observed = hash_concat(*sorted(hashes)) if hashes else lot.bundle_hash
     else:
-        bundle = compute_lot_bundle(entries, lot.bundled_at, lot.place, lot.file_count)
-        result = MatchResult.UNCHANGED if bundle["bundleHash"] == lot.bundle_hash else MatchResult.CHANGED
-    return _record_check(db, clerk, result, target=CheckTarget.LOT, submission_id=lot.id)
+        observed = compute_lot_bundle(entries, lot.bundled_at, lot.place, lot.file_count)["bundleHash"]
+        result = MatchResult.UNCHANGED if observed == lot.bundle_hash else MatchResult.CHANGED
+    return _record_check(db, clerk, result, observed, lot.case_id, None, target=CheckTarget.LOT, submission_id=lot.id)
 
 
 def recheck_evidence(db: Session, evidence: FileHash, clerk: User, stream: BinaryIO) -> IntegrityCheck:
     """So file chọn lại với hash đã ghi lúc nhận (E)."""
-    result = MatchResult.UNCHANGED if hash_stream(stream) == evidence.file_hash else MatchResult.CHANGED
-    return _record_check(db, clerk, result, target=CheckTarget.FILE, file_id=evidence.id)
+    file_hash = hash_stream(stream)
+    result = MatchResult.UNCHANGED if file_hash == evidence.file_hash else MatchResult.CHANGED
+    case_id = db.get(Submission, evidence.submission_id).case_id
+    return _record_check(db, clerk, result, file_hash, case_id, evidence.record_seq,
+                         target=CheckTarget.FILE, file_id=evidence.id)
 
 
-def _record_check(db: Session, user: User, result: MatchResult, **fields) -> IntegrityCheck:
-    check = IntegrityCheck(result=result, checked_by=user.id, checked_at=datetime.now(timezone.utc), **fields)
+def _record_check(db: Session, user: User, result: MatchResult, observed_hash: str, case_id, ref_seq,
+                  **fields) -> IntegrityCheck:
+    checked_at = datetime.now(timezone.utc)
+    record = append_record(db, event_type=EVENT_E, file_hash=observed_hash, actor_id=user.id,
+                           ts=unix_seconds(checked_at), result=result_code(result), case_id=case_id, ref_seq=ref_seq)
+    check = IntegrityCheck(result=result, checked_by=user.id, checked_at=checked_at, record_seq=record.seq, **fields)
     db.add(check)
     db.commit()
     return check
