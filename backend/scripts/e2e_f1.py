@@ -24,9 +24,9 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.core import log_record as lr
 from app.core.hashing import compute_bundle, hash_file, leaf_hash
-from app.core.anchor_payload import decode_anch
+from app.core.payload import decode_anch
 from app.core.merkle import verify_batch_proof
-from app.core.signing import verify_signature
+from app.core.receipt import verify as verify_signature
 
 results = []  # (trạng thái, tên bước)
 
@@ -172,8 +172,8 @@ def main():
 
     section("5. Đương sự tự kiểm tra biên nhận (không cần hỏi Tòa)")
     receipt, signature = receipt_body["receipt"], receipt_body["signature"]
-    public_key = api.call("GET", "/signing-key").json()["publicKey"]
-    step("Chữ ký hệ thống trên biên nhận hợp lệ", verify_signature(public_key, receipt, signature))
+    signer_address = api.call("GET", "/signing-key").json()["address"]
+    step("Chữ ký hệ thống trên biên nhận hợp lệ (EIP-191)", verify_signature(receipt, signature, signer_address))
     step("Băm lại từng file gốc = fileHash trong biên nhận",
          [hash_file(str(f)) for f in files] == [f["fileHash"] for f in receipt["files"]])
     leaves_ok = all(leaf_hash(f["fileHash"], f["hashedAt"]) == {"timeHash": f["timeHash"], "leafHash": f["leafHash"]}
@@ -193,7 +193,8 @@ def main():
              all(verify_batch_proof(r["recordHash"], r["groupPath"], r["batchPath"], r["root"])
                  for r in records.values()))
         step("Dữ liệu đợt neo (payload) chứa root và seq của bản ghi", all(
-            (p := decode_anch(bytes.fromhex(r["payload"])))["root"] == r["root"] and p["fromSeq"] <= r["seq"] <= p["toSeq"]
+            (p := decode_anch(bytes.fromhex(r["payload"]))).root.hex() == r["root"]
+            and r["fromSeq"] <= r["seq"] < r["fromSeq"] + p.record_count
             for r in records.values()))
         try:
             for r in {r["txHash"]: r for r in records.values()}.values():  # các file thường cùng 1 giao dịch
@@ -214,7 +215,7 @@ def main():
     step("File bị sửa -> tra cứu không ra", r.status_code == 404)
     forged = copy.deepcopy(receipt)
     forged["files"][0]["hashedAt"] = "2020-01-01T00:00:00.00+07:00"  # lùi ngày
-    step("Sửa giờ trong biên nhận -> chữ ký không còn hợp lệ", not verify_signature(public_key, forged, signature))
+    step("Sửa giờ trong biên nhận -> chữ ký không còn hợp lệ", not verify_signature(forged, signature, signer_address))
     forged_bundle = compute_bundle(forged["files"], forged["bundle"]["bundledAt"])
     step("Sửa giờ trong biên nhận -> Bundle tính lại khác", forged_bundle["bundleHash"] != receipt["bundle"]["bundleHash"])
 

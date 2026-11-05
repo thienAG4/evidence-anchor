@@ -1,9 +1,20 @@
-import base64
+"""Chữ ký biên nhận tạm theo EIP-191 (tài liệu kỹ thuật mục 6.5).
+
+Nội dung ký dài cố định 58 byte, không ghép chuỗi tùy ý:
+    nhãn "EVCHAIN-RECEIPT1" (16) ‖ số khóa (2) ‖ số thứ tự (8) ‖ SHA256(biên nhận JSON) (32)
+Chữ ký là personal_sign (EIP-191) trên 58 byte đó: 65 byte, dạng hex "0x...".
+Bên kiểm tra khôi phục địa chỉ ký từ chữ ký rồi so với địa chỉ khóa ký đã công bố,
+không tin địa chỉ ghi trong biên nhận.
+"""
+import hashlib
 import json
 
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from eth_account import Account
+from eth_account.messages import encode_defunct
+from eth_keys.exceptions import BadSignature
+
+RECEIPT_TAG = b"EVCHAIN-RECEIPT1"
+SIGNED_MESSAGE_LENGTH = 58
 
 
 def canonical_json(data: dict) -> bytes:
@@ -11,26 +22,34 @@ def canonical_json(data: dict) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def load_private_key(seed_hex: str) -> Ed25519PrivateKey:
-    """RECEIPT_SIGNING_KEY trong .env: 32 byte seed dạng hex."""
-    return Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed_hex.removeprefix("0x")))
+def signed_message(key_no: int, seq: int, receipt: dict) -> bytes:
+    """58 byte được ký: nhãn ‖ số khóa ‖ số thứ tự ‖ SHA256(biên nhận)."""
+    message = (RECEIPT_TAG + key_no.to_bytes(2, "big") + seq.to_bytes(8, "big")
+               + hashlib.sha256(canonical_json(receipt)).digest())
+    assert len(message) == SIGNED_MESSAGE_LENGTH
+    return message
 
 
-def public_key_b64(private_key: Ed25519PrivateKey) -> str:
-    raw = private_key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)
-    return base64.b64encode(raw).decode("ascii")
+def signer_address(private_key_hex: str) -> str:
+    """RECEIPT_SIGNING_KEY trong .env: khóa secp256k1 32 byte dạng hex. Trả về địa chỉ công khai."""
+    return Account.from_key(private_key_hex).address
 
 
-def sign_receipt(private_key: Ed25519PrivateKey, receipt: dict) -> str:
-    """Chữ ký hệ thống trên biên nhận tạm (PB-02), base64."""
-    return base64.b64encode(private_key.sign(canonical_json(receipt))).decode("ascii")
+def sign_receipt(private_key_hex: str, key_no: int, seq: int, receipt: dict) -> str:
+    """Chữ ký hệ thống trên biên nhận tạm (PB-02), hex 0x... 65 byte."""
+    signed = Account.sign_message(encode_defunct(primitive=signed_message(key_no, seq, receipt)),
+                                  private_key=private_key_hex)
+    return "0x" + signed.signature.hex().removeprefix("0x")
 
 
-def verify_signature(public_key_b64_value: str, receipt: dict, signature_b64: str) -> bool:
-    """Chữ ký hoặc khóa hỏng (sai base64, sai độ dài) cũng trả False, không ném lỗi ra /verify."""
+def verify_signature(expected_address: str, key_no: int, seq: int, receipt: dict, signature_hex: str) -> bool:
+    """Địa chỉ khôi phục từ chữ ký phải đúng địa chỉ khóa ký đã công bố.
+
+    Chữ ký hỏng (sai hex, sai độ dài) cũng trả False, không ném lỗi ra /verify.
+    """
     try:
-        public_key = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key_b64_value, validate=True))
-        public_key.verify(base64.b64decode(signature_b64, validate=True), canonical_json(receipt))
-        return True
-    except (InvalidSignature, ValueError, TypeError):  # binascii.Error là con của ValueError
+        recovered = Account.recover_message(encode_defunct(primitive=signed_message(key_no, seq, receipt)),
+                                            signature=bytes.fromhex(signature_hex.removeprefix("0x")))
+    except (ValueError, TypeError, AttributeError, OverflowError, IndexError, BadSignature):
         return False
+    return recovered.lower() == expected_address.lower()

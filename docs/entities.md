@@ -75,7 +75,7 @@ Duy nhất theo (case_id, user_id, role_in_case).
 | bundle_time_hash | CHAR(64) | NN | SHA256(bundled_at) |
 | lot_meta_hash | CHAR(64) | | Chỉ COURT_LOT: SHA256(`"{place}\|{file_count}"`) |
 | bundle_hash | CHAR(64) | NN | Lá Merkle khi neo |
-| signature | TEXT | NN | Chữ ký hệ thống (Ed25519, base64) trên receipt_json |
+| signature | TEXT | NN | Chữ ký hệ thống (EIP-191, hex 65 byte) trên 58 byte: nhãn ‖ số khóa ‖ số thứ tự ‖ SHA256(receipt_json) |
 | receipt_json | JSONB | NN | Biên nhận tạm, tự chứa, ghi một lần lúc nộp |
 
 Bỏ so với bản trước: `bundle_tx_hash`, `block_number`, `block_time`, `status`, `last_result`, `last_checked_at`
@@ -180,13 +180,17 @@ Cây hai tầng: bản ghi trong đợt chia nhóm theo người ghi (`actor_id`
 xếp theo seq). Lá = `SHA256(0x00 ‖ recordHash)`, nút trong = `SHA256(0x01 ‖ trái ‖ phải)`, tầng lẻ thì nút cuối đẩy
 thẳng lên. Mỗi nhóm ra một `subRoot`; tầng trên dựng cây trên các `subRoot` (vào như một nút, không thêm 0x00).
 
-Payload (big-endian; code: `backend/app/core/anchor_payload.py`). Thiết kế này mình tự đặt, nhóm cần chốt lại:
+Payload (big-endian; mọi dòng: nhãn 4 byte ‖ phiên bản 1 byte ‖ nội dung). ANCH theo tài liệu kỹ thuật 1027_Tech
+(`backend/app/core/payload.py`). KEYR, NOOP cùng quy ước, chưa có trong tài liệu, nhóm cần chốt
+(`backend/app/core/anchor_payload.py`):
 
 | Loại | Byte | Nội dung |
 |---|---|---|
-| ANCH | 92 | `"ANCH"` ‖ batch_no u64 ‖ from_seq u64 ‖ to_seq u64 ‖ prev_root 32 ‖ root 32 |
-| KEYR | 46 | `"KEYR"` ‖ key_id u16 ‖ khóa công khai Ed25519 32 byte ‖ from_seq u64 |
-| NOOP | 12 | `"NOOP"` ‖ batch_no u64 |
+| ANCH | 85 | `"ANCH"` ‖ version ‖ batch_no u64 ‖ record_count u64 ‖ prev_root 32 ‖ root 32 |
+| KEYR | 35 | `"KEYR"` ‖ version ‖ key_no u16 (`RECEIPT_KEY_NO`) ‖ địa chỉ khóa ký biên nhận EIP-191 20 byte ‖ from_seq u64 |
+| NOOP | 13 | `"NOOP"` ‖ version ‖ batch_no u64 |
+
+ANCH không ghi from_seq: `from_seq` = `to_seq` đợt trước + 1, `record_count` = `to_seq − from_seq + 1`.
 
 ## ANCHORLEAF (mỗi bản ghi là một lá)
 

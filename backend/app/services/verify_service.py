@@ -6,13 +6,12 @@ from collections import Counter
 from typing import BinaryIO
 
 from app.config import settings
-from app.core import anchor_payload
 from app.core import log_record as lr
 from app.core.chain_reader import ChainReadError, get_anchor_tx
 from app.core.hashing import BUNDLE_SCHEME, LOT_SCHEME, compute_bundle, compute_lot_bundle, hash_stream, leaf_hash
 from app.core.merkle import verify_batch_proof
-from app.core.receipt import signing_public_key
-from app.core.signing import verify_signature
+from app.core.payload import decode_anch
+from app.core import receipt as receipt_signing
 from app.errors.codes import ErrorCode
 from app.errors.handlers import AppError
 
@@ -45,7 +44,8 @@ def verify(document: dict, streams: list[BinaryIO]) -> dict:
         raise AppError(400, ErrorCode.INVALID_RECEIPT_FORMAT,
                        f"Biên nhận không đúng định dạng (cần file JSON tải từ GET /receipts/{{code}}): {exc}") from None
 
-    check("Chữ ký hệ thống trên biên nhận", verify_signature(signing_public_key(), receipt, signature))
+    signer = settings.receipt_signer_address or receipt_signing.signing_address()
+    check("Chữ ký hệ thống trên biên nhận", receipt_signing.verify(receipt, signature, signer))
 
     actual = Counter(hash_stream(s) for s in streams)
     missing = [f["fileName"] for f in receipt_files if (expected - actual)[f["fileHash"]] > 0]
@@ -84,11 +84,11 @@ def _check_records(check, receipt: dict, anchor: dict) -> None:
             if not verify_batch_proof(r["recordHash"], r["groupPath"], r["batchPath"], r["root"]):
                 bad_proofs.append(f["fileCode"])
             try:
-                batch = anchor_payload.decode_anch(bytes.fromhex(r["payload"]))
-            except ValueError:
+                batch = decode_anch(bytes.fromhex(r["payload"]))
+            except ValueError:  # PayloadError: sai nhãn, phiên bản, độ dài
                 batch = None
-            if not batch or batch["root"] != r["root"] or batch["batchNo"] != r["batchNo"] \
-                    or not batch["fromSeq"] <= r["seq"] <= batch["toSeq"]:
+            if not batch or batch.root.hex() != r["root"] or batch.batch_no != r["batchNo"] \
+                    or not r["fromSeq"] <= r["seq"] < r["fromSeq"] + batch.record_count:
                 bad_payloads.append(f["fileCode"])
             payloads[r["txHash"]] = r["payload"]
     except (KeyError, TypeError, ValueError, AttributeError) as exc:

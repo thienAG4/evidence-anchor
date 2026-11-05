@@ -3,7 +3,6 @@ theo dõi kết quả (ChainTxResult). Mọi bảng chỉ ghi thêm, trừ Ancho
 
 Trạng thái neo của một lần nộp suy ra từ bản ghi A/E của các file trong đó.
 """
-import base64
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -14,13 +13,13 @@ from app.config import settings
 from app.core import anchor_payload
 from app.core.log_record import GENESIS_HASH
 from app.core.merkle import build_batch
-from app.core.receipt import signing_public_key
+from app.core.payload import Anch
+from app.core.receipt import signing_address
 from app.db.enums import AnchorStatus, ChainTxKind, ChainTxStatus
 from app.db.models import AnchorBatch, AnchorLeaf, AnchorState, ChainTx, ChainTxResult, FileHash, LogRecord, Submission
 
 logger = logging.getLogger(__name__)
 EXPLORER_TX_URL = "https://sepolia.etherscan.io/tx/"
-SIGNING_KEY_ID = 1
 OK_STATUSES = (ChainTxStatus.CONFIRMED, ChainTxStatus.FINALIZED)
 
 
@@ -72,7 +71,7 @@ def anchor_view(db: Session, submission: Submission) -> dict:
         tx, result, finalized = confirmed[batch.id]
         items.append({
             "fileCode": f.file_code, "seq": record.seq, "raw": record.raw.hex(), "recordHash": record.record_hash,
-            "batchNo": batch.batch_no, "groupIndex": leaf.group_index, "leafIndex": leaf.leaf_index,
+            "batchNo": batch.batch_no, "fromSeq": batch.from_seq, "groupIndex": leaf.group_index, "leafIndex": leaf.leaf_index,
             "leafHash": leaf.leaf_hash, "groupPath": leaf.group_path, "batchPath": leaf.batch_path,
             "root": batch.root, "payload": batch.payload.hex(),
             "txHash": tx.tx_hash, "blockNumber": result.block_number,
@@ -139,14 +138,16 @@ def ensure_key_registered(db: Session, chain) -> None:
         db.rollback()
         return
     last = db.scalar(select(AnchorBatch).order_by(AnchorBatch.batch_no.desc()).limit(1))
-    payload = anchor_payload.encode_keyr(SIGNING_KEY_ID, base64.b64decode(signing_public_key()),
+    payload = anchor_payload.encode_keyr(settings.receipt_key_no, settings.receipt_signer_address or signing_address(),
                                          (last.to_seq if last else 0) + 1)
     nonce, state.next_nonce = state.next_nonce, state.next_nonce + 1
     _send(db, chain, kind=ChainTxKind.KEYR, nonce=nonce, payload=payload)
 
 
 def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
-    """Chốt đợt mới từ các bản ghi sau đợt trước (liền nhau), cấp nonce trong cùng thao tác database."""
+    """Chốt đợt mới từ các bản ghi sau đợt trước (liền nhau), cấp nonce trong cùng thao tác database.
+
+    Payload ANCH chỉ ghi số bản ghi; from_seq suy ra được từ đợt trước (to_seq + 1)."""
     state = _locked_state(db)
     if state.halted:
         db.rollback()
@@ -163,7 +164,7 @@ def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
     root, proofs = build_batch([[r.record_hash for r in g] for g in groups.values()])
     batch_no, prev_root = (last.batch_no + 1, last.root) if last else (1, GENESIS_HASH)
     batch = AnchorBatch(batch_no=batch_no, from_seq=from_seq, to_seq=records[-1].seq, prev_root=prev_root, root=root,
-                        payload=anchor_payload.encode_anch(batch_no, from_seq, records[-1].seq, prev_root, root),
+                        payload=Anch(batch_no, len(records), bytes.fromhex(prev_root), bytes.fromhex(root)).encode(),
                         nonce=state.next_nonce)
     state.next_nonce += 1
     db.add(batch)
