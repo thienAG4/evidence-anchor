@@ -123,13 +123,13 @@ def eip191_sign(message: bytes) -> str:
 
 
 def interim_receipt_signature_vector() -> dict:
-    """Cách hệ thống đang ký TRƯỚC khi có bản ghi 164 byte: recordHash tạm = SHA256(biên nhận JSON)."""
+    """Lớp chữ ký cả biên nhận (giữ bundle, tên file, giờ khỏi bị sửa): recordHash = SHA256(biên nhận JSON)."""
     receipt = {"receiptCode": "TX-0042", "type": "SELF", "submittedAt": "2026-11-04T21:05:35.16+07:00",
                "bundle": {"bundleHash": sha256_hex(b"bundle-demo")},
                "signer": {"algorithm": "EIP-191", "keyNo": 1, "address": signer_address(TEST_SIGNING_KEY)}}
     key_id, seq = 1, 42
     return {
-        "name": "tạm: recordHash = SHA256(biên nhận JSON), seq = số của mã biên nhận",
+        "name": "cả biên nhận: recordHash = SHA256(biên nhận JSON), seq = số của mã biên nhận",
         "keyId": key_id,
         "seq": seq,
         "receipt": receipt,
@@ -330,7 +330,8 @@ def build() -> dict:
             "1_che_ma": "Bỏ: 1027_Tech dùng UserID và mã vụ án nội bộ, không salt/HMAC (xem record_164.refs).",
             "2_ban_ghi_164": "record_164", "3_noi_chuoi": "hash_chain", "4_merkle_hai_tang": "merkle_two_level",
             "5_payload_anch": "chain_lines (ANCH 93 byte theo 1026_Tech, KEYR 37 byte, NOOP 13 byte)",
-            "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
+            "6_bien_nhan": "receipt_seq3 (chữ ký trên bản ghi của từng file, files[].recordSignature) và "
+                           "receipt_signature_eip191 (lớp chữ ký cả biên nhận JSON)",
             "mau_phai_tu_choi": "must_reject",
         },
         **record_vectors(),
