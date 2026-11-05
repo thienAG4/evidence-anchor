@@ -14,7 +14,7 @@ dòng cũ mà ghi thêm vào bảng riêng (`Anchor`, `AnchorLeaf`, `IntegrityCh
 
 | Chỉ ghi thêm | Được sửa |
 |---|---|
-| Submission, FileHash, Anchor, AnchorLeaf, IntegrityCheck, AppraisalStep, Dossier, DossierItem, AccessLog | User, CourtCase, CaseParticipant |
+| Submission, FileHash, Anchor, AnchorFinality, AnchorLeaf, IntegrityCheck, AppraisalStep, Dossier, DossierItem, AccessLog | User, CourtCase, CaseParticipant |
 
 ## USER
 
@@ -83,7 +83,9 @@ Bỏ so với bản trước: `bundle_tx_hash`, `block_number`, `block_time`, `s
 
 Trạng thái neo **suy ra**, không lưu:
 
-- `ANCHORED`: có `AnchorLeaf` thuộc một `Anchor` có `result = CONFIRMED`.
+- `ANCHORED` (hoàn chỉnh): có `AnchorLeaf` thuộc một `Anchor` có `result = CONFIRMED` **và** đã có `AnchorFinality`
+  (block chứa giao dịch đã chốt). Chỉ lúc này biên nhận mới có phần `anchor` và thư ký mới đối chiếu được.
+- `ANCHORED_UNFINALIZED` ("Đã neo, chờ chốt"): có `Anchor` CONFIRMED nhưng block chưa chốt (khoảng 13 phút).
 - `ANCHOR_FAILED`: có `AnchorLeaf` nhưng mọi `Anchor` chứa nó đều `FAILED` (worker sẽ thử lại).
 - `PENDING_ANCHOR`: chưa có `AnchorLeaf`.
 
@@ -141,6 +143,18 @@ Thử lại sau lỗi = một `Anchor` mới, `Anchor` cũ giữ nguyên.
 | merkle_proof | JSONB | NN | `[{"side": "L" \| "R", "hash": "…"}]`; PER_SUBMISSION thì `[]` |
 
 Duy nhất theo (anchor_id, submission_id).
+
+## ANCHORFINALITY (block chứa giao dịch neo đã chốt)
+
+| Attribute | Kiểu | Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | |
+| anchor_id | UUID | FK → Anchor, UQ, NN | Mỗi lần neo tối đa 1 dòng |
+| tx_block_number | BIGINT | NN | Block thật chứa giao dịch lúc chốt (đọc lại từ chuỗi; khác `Anchor.block_number` nếu block bị xếp lại) |
+| finalized_block_number | BIGINT | NN | Block chốt mới nhất lúc worker kiểm |
+| created_at | TIMESTAMPTZ | NN | |
+
+Worker ghi khi giao dịch còn, thành công, và `tx_block_number <= finalized_block_number`. Không sửa `Anchor`.
 
 ## INTEGRITYCHECK (mỗi lần tính lại = một dòng)
 
@@ -215,6 +229,7 @@ Duy nhất theo (anchor_id, submission_id).
 - FileHash N–1 FileHash (`baseline_file_id`).
 - FileHash 1–N AppraisalStep.
 - Anchor 1–N AnchorLeaf, Submission 1–N AnchorLeaf (mỗi lần thử neo một dòng).
+- Anchor 1–0..1 AnchorFinality.
 - Submission / FileHash / Dossier 1–N IntegrityCheck.
 - CourtCase 1–N Dossier, Dossier 1–N DossierItem.
 - User 1–N AccessLog.

@@ -63,7 +63,8 @@ class AnchorResult(str, enum.Enum):
 class AnchorStatus(str, enum.Enum):
     """Không lưu DB: suy ra từ Anchor/AnchorLeaf."""
     PENDING_ANCHOR = "PENDING_ANCHOR"
-    ANCHORED = "ANCHORED"
+    ANCHORED_UNFINALIZED = "ANCHORED_UNFINALIZED"  # giao dịch đã vào block, block chưa chốt (CONFIRMED)
+    ANCHORED = "ANCHORED"  # block đã chốt (FINALIZED): biên nhận hoàn chỉnh
     ANCHOR_FAILED = "ANCHOR_FAILED"
 
 

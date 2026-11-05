@@ -18,7 +18,7 @@
     return {
       ...p,
       ...EC.data.litigantSummary(p.name),
-      hasPendingLock: receipts.some((r) => r.status === 'recorded'),
+      hasPendingLock: receipts.some((r) => !EC.isLocked(r)),
       hasUnchecked: receipts.some((r) => r.files.some((f) => f.result === 'unchecked')),
     };
   });

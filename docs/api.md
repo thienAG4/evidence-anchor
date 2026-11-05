@@ -39,7 +39,7 @@ mật khẩu, ví dụ `duongsu / 1234` (đương sự), `thuky / 5678` (thư k�
 | GET /receipts/{code} | PARTY (của mình) | không | 200 biên nhận JSON có chữ ký hệ thống (có hash để tự kiểm tra); khi ANCHORED có thêm `anchor: {rootHash, merkleProof, txHash, blockNumber, blockTime, explorerUrl}` | RECEIPT_NOT_FOUND |
 | GET /signing-key | PUBLIC | không | 200 `{algorithm: "EIP-191", keyNo, address}` để tự kiểm chữ ký biên nhận (khôi phục địa chỉ từ chữ ký rồi so với `address`) | |
 
-`status` suy ra từ bảng `Anchor`/`AnchorLeaf`: `PENDING_ANCHOR` / `ANCHORED` / `ANCHOR_FAILED`.
+`status` suy ra từ bảng `Anchor`/`AnchorLeaf`/`AnchorFinality`: `PENDING_ANCHOR` / `ANCHORED_UNFINALIZED` (đã neo, block chưa chốt) / `ANCHORED` (block đã chốt, biên nhận hoàn chỉnh) / `ANCHOR_FAILED`.
 
 `GET /submissions` và `GET /receipts/{code}` (trường `view`) có thêm kết quả Tòa đối chiếu từng file:
 `files: [{fileCode, fileName, hashedAt, result: {value, label, checkedAt} | null, phase}]`, `checked`, `anchoredAt`.
@@ -104,7 +104,7 @@ không có fileCode thì `NO_BASELINE` và hash lúc nhận làm mốc.
 
 | Endpoint | Ai gọi | Request | Response | Lỗi riêng |
 |---|---|---|---|---|
-| POST /verify | PUBLIC | `receipt` (file JSON tải từ `GET /receipts/{code}`: `{receipt, signature, anchor}`), `files[]` | 200 `{valid, receiptCode, checks:[{name, ok, detail?}]}`: kiểm chữ ký hệ thống, băm lại file, tính lại Ha, Habc, Bundle, kiểm đường dẫn Merkle tới rootHash, đọc giao dịch trên Sepolia (thành công, Input Data = rootHash, gửi từ `ANCHOR_WALLET_ADDRESS`). Chưa neo thì `valid = false` | INVALID_RECEIPT_FORMAT, CHAIN_UNAVAILABLE |
+| POST /verify | PUBLIC | `receipt` (file JSON tải từ `GET /receipts/{code}`: `{receipt, signature, anchor}`), `files[]` | 200 `{valid, receiptCode, checks:[{name, ok, detail?}]}`: kiểm chữ ký hệ thống, băm lại file, tính lại Ha, Habc, Bundle, kiểm đường dẫn Merkle tới rootHash, đọc giao dịch trên Sepolia (thành công, block đã chốt, Input Data = rootHash, gửi từ `ANCHOR_WALLET_ADDRESS`). Chưa neo thì `valid = false` | INVALID_RECEIPT_FORMAT, CHAIN_UNAVAILABLE |
 
 ## Quản trị (ADMIN)
 

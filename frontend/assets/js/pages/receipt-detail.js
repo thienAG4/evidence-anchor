@@ -32,7 +32,7 @@
 
   // ---------------------------------------------------------------- Stepper
   function buildSteps() {
-    const isLocked = receipt.status !== 'recorded';
+    const isLocked = EC.isLocked(receipt);
     const checkedCount = files.filter((f) => f.result === 'match' || f.result === 'mismatch').length;
     const inProgress = files.some((f) => f.result === 'checking');
 
@@ -50,7 +50,7 @@
       {
         label: 'Đã khóa, không thể sửa',
         state: isLocked ? 'done' : 'current',
-        time: isLocked ? receipt.lockedAt : `Sẽ khóa lúc ${receipt.lockedAt.split(' ')[0]} hôm nay`,
+        time: isLocked ? receipt.lockedAt : EC.lockPendingText(receipt),
       },
       { label: 'Tòa đã kiểm tra', state: isLocked ? courtStep.state : 'pending', time: isLocked ? courtStep.time : 'Chưa kiểm tra' },
     ];

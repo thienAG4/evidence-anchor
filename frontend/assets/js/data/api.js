@@ -124,17 +124,18 @@
 
   /**
    * Biên nhận từ API → { id, litigant, status, recordedAt, lockedAt, files: [{ code, name, hash, result, checkedAt }] }.
-   * status: recorded (chưa neo lên chuỗi) → locked (đã neo, không ai sửa được) → checked (Tòa đã đối chiếu).
+   * status: recorded (chưa neo lên chuỗi) → anchoring (đã neo, block chưa chốt) → locked (block đã chốt,
+   * không ai sửa được) → checked (Tòa đã đối chiếu).
    */
   function toReceipt(view) {
-    const day = vnText(view.submittedAt).split(' ')[1];
     return {
       id: view.receiptCode,
       litigant: view.owner.fullName,
-      status: view.status !== 'ANCHORED' ? 'recorded' : (view.checked ? 'checked' : 'locked'),
+      status: view.status === 'ANCHORED' ? (view.checked ? 'checked' : 'locked')
+        : (view.status === 'ANCHORED_UNFINALIZED' ? 'anchoring' : 'recorded'),
       anchorStatus: view.status,
       recordedAt: vnText(view.submittedAt),
-      lockedAt: view.anchoredAt ? vnText(view.anchoredAt) : `23:59 ${day}`,
+      lockedAt: view.anchoredAt ? vnText(view.anchoredAt) : null,
       files: view.files.map((f) => ({
         code: f.fileCode,
         name: f.fileName,
