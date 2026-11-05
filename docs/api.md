@@ -109,7 +109,7 @@ không có fileCode thì `NO_BASELINE` và hash lúc nhận làm mốc.
 
 | Endpoint | Ai gọi | Request | Response | Lỗi riêng |
 |---|---|---|---|---|
-| POST /verify | PUBLIC | `receipt` (file JSON tải từ `GET /receipts/{code}`: `{receipt, signature, anchor}`), `files[]` | 200 `{valid, receiptCode, checks:[{name, ok, detail?}]}`: kiểm chữ ký hệ thống, băm lại file, tính lại Ha, Habc, Bundle, kiểm bản ghi 164 byte từng file (`SHA256(raw) = recordHash`, chứa đúng hash file), kiểm đường dẫn Merkle hai tầng từ recordHash (groupPath, batchPath) tới root đợt, payload ANCH (85 byte) chứa root và đủ số bản ghi để có seq (fromSeq ≤ seq < fromSeq + recordCount), đọc giao dịch trên Sepolia (thành công, block đã chốt, Input Data = payload, gửi từ `ANCHOR_WALLET_ADDRESS`). Chưa neo thì `valid = false` | INVALID_RECEIPT_FORMAT, CHAIN_UNAVAILABLE |
+| POST /verify | PUBLIC | `receipt` (file JSON tải từ `GET /receipts/{code}`: `{receipt, signature, anchor}`), `files[]` | 200 `{valid, receiptCode, checks:[{name, ok, detail?}]}`: kiểm chữ ký hệ thống, băm lại file, tính lại Ha, Habc, Bundle, kiểm bản ghi 164 byte từng file (`SHA256(raw) = recordHash`, chứa đúng hash file), kiểm đường dẫn Merkle hai tầng từ recordHash (groupPath, batchPath) tới root đợt, payload ANCH (93 byte) chứa root, đúng fromSeq và có seq (fromSeq ≤ seq ≤ toSeq), đọc giao dịch trên Sepolia (thành công, block đã chốt, Input Data = payload, gửi từ `ANCHOR_WALLET_ADDRESS`). Chưa neo thì `valid = false` | INVALID_RECEIPT_FORMAT, CHAIN_UNAVAILABLE |
 
 ## Quản trị (ADMIN)
 
@@ -124,7 +124,7 @@ không có fileCode thì `NO_BASELINE` và hash lúc nhận làm mốc.
 
 Chạy nền, không có API gọi. Thứ được neo là **LogRecord** (bản ghi 164 byte của mọi sự kiện A, E, C, D), theo
 **đợt** (`AnchorBatch`): các bản ghi liền nhau `from_seq..to_seq`, cây Merkle hai tầng (nhóm theo người ghi), Input
-Data của giao dịch = `payload` ANCH 85 byte. Giao dịch đầu tiên của ví là KEYR. Chi tiết: `docs/entities.md`.
+Data của giao dịch = `payload` ANCH 93 byte. Giao dịch đầu tiên của ví là KEYR. Chi tiết: `docs/entities.md`.
 `ANCHOR_MODE` trong `.env`:
 
 - `per_submission` (demo): mỗi vòng worker (`ANCHOR_INTERVAL_SECONDS`) chốt một đợt từ mọi bản ghi chưa neo.

@@ -197,7 +197,7 @@ def main():
                  for r in records.values()))
         step("Dữ liệu đợt neo (payload) chứa root và seq của bản ghi", all(
             (p := decode_anch(bytes.fromhex(r["payload"]))).root.hex() == r["root"]
-            and r["fromSeq"] <= r["seq"] < r["fromSeq"] + p.record_count
+            and p.from_seq == r["fromSeq"] and p.contains(r["seq"])
             for r in records.values()))
         try:
             for r in {r["txHash"]: r for r in records.values()}.values():  # các file thường cùng 1 giao dịch

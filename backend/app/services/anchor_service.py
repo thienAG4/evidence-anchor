@@ -151,7 +151,7 @@ def ensure_key_registered(db: Session, chain) -> None:
 def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
     """Chốt đợt mới từ các bản ghi sau đợt trước (liền nhau), cấp nonce trong cùng thao tác database.
 
-    Payload ANCH chỉ ghi số bản ghi; from_seq suy ra được từ đợt trước (to_seq + 1)."""
+    Payload ANCH (93 byte) ghi khoảng from_seq..to_seq; from_seq = to_seq đợt trước + 1."""
     state = _locked_state(db)
     if state.halted:
         db.rollback()
@@ -167,7 +167,8 @@ def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
     root = tree["root"]
     batch_no, prev_root = (last.batch_no + 1, last.root) if last else (1, GENESIS_HASH)
     batch = AnchorBatch(batch_no=batch_no, from_seq=from_seq, to_seq=records[-1].seq, prev_root=prev_root, root=root,
-                        payload=Anch(batch_no, len(records), bytes.fromhex(prev_root), bytes.fromhex(root)).encode(),
+                        payload=Anch(batch_no, from_seq, records[-1].seq, bytes.fromhex(prev_root),
+                                     bytes.fromhex(root)).encode(),
                         nonce=state.next_nonce)
     state.next_nonce += 1
     db.add(batch)

@@ -20,7 +20,9 @@ from app.core.hashing import (BUNDLE_SCHEME, LOT_SCHEME, CHUNK_SIZE, compute_bun
                               leaf_hash, lot_meta_hash)
 import uuid
 
+from app.core.anchor_payload import encode_keyr, encode_noop
 from app.core.merkle import build_tree, build_two_level, record_leaf
+from app.core.payload import Anch
 from app.core.record import ZERO32, EventType, Record, Result, ref32
 from app.core.signing import build_signed_message, canonical_json, sign_receipt, signed_message, signer_address
 from eth_account import Account
@@ -237,6 +239,84 @@ def record_vectors() -> dict:
     }
 
 
+def _patch(raw: bytes, offset: int, value: bytes) -> str:
+    return (raw[:offset] + value + raw[offset + len(value):]).hex()
+
+
+def chain_line_vectors() -> dict:
+    """Phần 5: dòng ANCH (93 byte, hướng A theo 1026_Tech), KEYR, NOOP."""
+    root1 = bytes.fromhex(build_two_level([(r.seq, r.actor_ref.hex(), r.record_hash())
+                                           for r in demo_records()[:3]])["root"])
+    root2 = bytes.fromhex(sha256_hex(b"root-dot-2"))
+    first, second = Anch(1, 1, 3, bytes(32), root1), Anch(2, 4, 5, root1, root2)
+    good = first.encode()
+
+    def anch_view(a: Anch) -> dict:
+        return {"input": {"batchId": a.batch_no, "fromSeq": a.from_seq, "toSeq": a.to_seq,
+                          "prevRoot": a.prev_root.hex(), "root": a.root.hex()},
+                "hex": a.encode().hex(), "length": len(a.encode())}
+
+    old_85 = b"ANCH" + bytes([1]) + (1).to_bytes(8, "big") + (3).to_bytes(8, "big") + bytes(32) + root1
+    # offset: tag 0..3 | version 4 | batchId 5..12 | fromSeq 13..20 | toSeq 21..28 | prevRoot 29..60 | root 61..92
+    anch_reject = [
+        {"name": "ANCH 92 byte (thiếu byte cuối)", "hex": good[:92].hex()},
+        {"name": "ANCH 85 byte kiểu cũ (recordCount)", "hex": old_85.hex()},
+        {"name": "nhãn sai ANCX", "hex": _patch(good, 0, b"ANCX")},
+        {"name": "phiên bản 2", "hex": _patch(good, 4, bytes([2]))},
+        {"name": "đợt 1 có prevRoot khác 0", "hex": _patch(good, 29, b"\x01" * 32)},
+        {"name": "đợt 1 có fromSeq khác 1", "hex": _patch(good, 13, (2).to_bytes(8, "big"))},
+        {"name": "toSeq nhỏ hơn fromSeq", "hex": second.encode()[:21].hex() + (3).to_bytes(8, "big").hex()
+                                                    + second.encode()[29:].hex()},
+        {"name": "số đợt 0", "hex": _patch(good, 5, bytes(8))},
+    ]
+    s = second.encode()
+    contiguity_reject = [
+        {"name": "hở bản ghi: đợt 2 bắt đầu từ 5", "prev": good.hex(), "next": _patch(s, 13, (5).to_bytes(8, "big"))},
+        {"name": "chồng bản ghi: đợt 2 bắt đầu từ 3", "prev": good.hex(), "next": _patch(s, 13, (3).to_bytes(8, "big"))},
+        {"name": "prevRoot đợt 2 khác root đợt 1", "prev": good.hex(), "next": _patch(s, 29, root2)},
+        {"name": "nhảy số đợt 1 → 3", "prev": good.hex(), "next": _patch(s, 5, (3).to_bytes(8, "big"))},
+    ]
+
+    signer = signer_address(TEST_SIGNING_KEY).lower()
+    keyr = encode_keyr(1, signer, 1)
+    keyr_view = {"input": {"keyId": 1, "address": signer, "fromSeq": 1}, "hex": keyr.hex(), "length": len(keyr)}
+    keyr_reject = [
+        {"name": "KEYR 35 byte kiểu cũ (keyNo u16)", "hex": (keyr[:5] + keyr[7:]).hex()},
+        {"name": "nhãn sai KEYX", "hex": _patch(keyr, 0, b"KEYX")},
+        {"name": "phiên bản 2", "hex": _patch(keyr, 4, bytes([2]))},
+        {"name": "fromSeq 0", "hex": _patch(keyr, 29, bytes(8))},
+    ]
+    noop = encode_noop(7)
+    noop_reject = [
+        {"name": "NOOP 12 byte", "hex": noop[:12].hex()},
+        {"name": "nhãn sai NOOX", "hex": _patch(noop, 0, b"NOOX")},
+        {"name": "phiên bản 2", "hex": _patch(noop, 4, bytes([2]))},
+    ]
+    return {"chain_lines": {
+        "common": "mọi dòng: nhãn 4 byte ASCII ‖ phiên bản u8 (=1) ‖ payload; số nguyên không dấu big-endian",
+        "anch": {
+            "layout": "\"ANCH\" 4 | version 1 | batchId u64 8 | fromSeq u64 8 | toSeq u64 8 | prevRoot 32 | root 32 "
+                      "= 93 byte",
+            "source": "1026_Tech; nhóm chốt hướng A (khoảng số thứ tự, có byte phiên bản)",
+            "rules": "đợt 1: prevRoot toàn 0, fromSeq = 1; toSeq ≥ fromSeq; đợt sau: batchId +1, "
+                     "prevRoot = root đợt trước, fromSeq = toSeq đợt trước + 1",
+            "cases": [anch_view(first), anch_view(second)],
+            "must_reject": anch_reject,
+            "contiguity_must_reject": contiguity_reject,
+        },
+        "keyr": {
+            "layout": "\"KEYR\" 4 | version 1 | keyId u32 4 | địa chỉ khóa ký 20 | fromSeq u64 8 = 37 byte",
+            "note": "keyId cùng kiểu u32 với keyId trong 58 byte được ký (receipt_signature_58)",
+            "cases": [keyr_view], "must_reject": keyr_reject,
+        },
+        "noop": {
+            "layout": "\"NOOP\" 4 | version 1 | nonce u64 8 = 13 byte",
+            "note": "gửi cùng nonce với giao dịch kẹt để thay nó; nonce ghi lại để đối chiếu",
+            "cases": [{"input": {"nonce": 7}, "hex": noop.hex(), "length": len(noop)}], "must_reject": noop_reject,
+        },
+    }}
+
+
 def _flip_last_byte_of_file_hash(record: Record) -> str:
     raw = bytearray(record.encode())
     raw[18 + 32] ^= 0x01  # byte cuối của fileHash (label 10 + seq 8 + type 1 = 19; fileHash 19..50)
@@ -249,12 +329,12 @@ def build() -> dict:
         "parts": {
             "1_che_ma": "Bỏ: 1027_Tech dùng UserID và mã vụ án nội bộ, không salt/HMAC (xem record_164.refs).",
             "2_ban_ghi_164": "record_164", "3_noi_chuoi": "hash_chain", "4_merkle_hai_tang": "merkle_two_level",
-            "5_payload_anch": "Chưa có: 1027_Tech và 1026_Tech khác nhau về nội dung ANCH, Thẻ 22 ghi 92 byte còn "
-                              "1026_Tech ghi 93 byte. Chờ nhóm chốt.",
+            "5_payload_anch": "chain_lines (ANCH 93 byte theo 1026_Tech, KEYR 37 byte, NOOP 13 byte)",
             "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
             "mau_phai_tu_choi": "must_reject",
         },
         **record_vectors(),
+        **chain_line_vectors(),
         "conventions": {
             "hash": "SHA-256, viết hex chữ thường 64 ký tự",
             "concat": "‖ = nối 32 byte NHỊ PHÂN của từng hash (không nối chuỗi hex)",

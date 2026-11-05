@@ -336,3 +336,73 @@ def test_receipt_seq3_paths():
     assert verify_record_proof(bytes.fromhex(REC3["recordHash"]), REC3["groupPath"], REC3["batchPath"], REC3["root"])
     assert not verify_record_proof(bytes.fromhex(RECORDS[1]["recordHash"]), REC3["groupPath"], REC3["batchPath"],
                                    REC3["root"])
+
+
+# ---------------------------------------------------------------- Dòng trên chuỗi: ANCH, KEYR, NOOP (phần 5)
+
+from app.core.anchor_payload import decode_keyr, decode_noop, encode_keyr, encode_noop  # noqa: E402
+from app.core.payload import Anch, PayloadError, check_contiguous, decode_anch  # noqa: E402
+
+LINES = VECTORS["chain_lines"]
+ANCH_V = LINES["anch"]
+
+
+@pytest.mark.parametrize("case", ANCH_V["cases"], ids=lambda c: f"dot{c['input']['batchId']}")
+def test_anch_payload(case):
+    i = case["input"]
+    raw = (b"ANCH" + bytes([1]) + i["batchId"].to_bytes(8, "big") + i["fromSeq"].to_bytes(8, "big")
+           + i["toSeq"].to_bytes(8, "big") + bytes.fromhex(i["prevRoot"]) + bytes.fromhex(i["root"]))
+    assert raw.hex() == case["hex"] and len(raw) == case["length"] == 93
+    anch = Anch(i["batchId"], i["fromSeq"], i["toSeq"], bytes.fromhex(i["prevRoot"]), bytes.fromhex(i["root"]))
+    assert anch.encode() == raw and decode_anch(raw) == anch
+
+
+def test_anch_chain_and_root():
+    first, second = (decode_anch(bytes.fromhex(c["hex"])) for c in ANCH_V["cases"])
+    assert first.prev_root == bytes(32) and first.root.hex() == TWO["root"]
+    check_contiguous(first, second)
+    assert first.contains(3) and not first.contains(4) and second.record_count == 2
+
+
+@pytest.mark.parametrize("case", ANCH_V["must_reject"], ids=lambda c: c["name"])
+def test_anch_must_reject(case):
+    with pytest.raises(PayloadError):
+        decode_anch(bytes.fromhex(case["hex"]))
+
+
+@pytest.mark.parametrize("case", ANCH_V["contiguity_must_reject"], ids=lambda c: c["name"])
+def test_anch_contiguity_must_reject(case):
+    prev = decode_anch(bytes.fromhex(case["prev"]))
+    with pytest.raises(PayloadError):
+        check_contiguous(prev, decode_anch(bytes.fromhex(case["next"])))
+
+
+def test_keyr():
+    case = LINES["keyr"]["cases"][0]
+    i = case["input"]
+    raw = b"KEYR" + bytes([1]) + i["keyId"].to_bytes(4, "big") + bytes.fromhex(i["address"][2:]) \
+        + i["fromSeq"].to_bytes(8, "big")
+    assert raw.hex() == case["hex"] and len(raw) == case["length"] == 37
+    assert encode_keyr(i["keyId"], i["address"], i["fromSeq"]) == raw
+    k = decode_keyr(raw)
+    assert (k.key_id, k.address, k.from_seq) == (i["keyId"], i["address"], i["fromSeq"])
+    assert k.address == VECTORS["receipt_seq3"]["address"].lower()
+
+
+@pytest.mark.parametrize("case", LINES["keyr"]["must_reject"], ids=lambda c: c["name"])
+def test_keyr_must_reject(case):
+    with pytest.raises(PayloadError):
+        decode_keyr(bytes.fromhex(case["hex"]))
+
+
+def test_noop():
+    case = LINES["noop"]["cases"][0]
+    raw = b"NOOP" + bytes([1]) + case["input"]["nonce"].to_bytes(8, "big")
+    assert raw.hex() == case["hex"] and len(raw) == case["length"] == 13
+    assert encode_noop(case["input"]["nonce"]) == raw and decode_noop(raw) == case["input"]["nonce"]
+
+
+@pytest.mark.parametrize("case", LINES["noop"]["must_reject"], ids=lambda c: c["name"])
+def test_noop_must_reject(case):
+    with pytest.raises(PayloadError):
+        decode_noop(bytes.fromhex(case["hex"]))

@@ -91,7 +91,7 @@ def _check_records(check, receipt: dict, anchor: dict) -> None:
             except ValueError:  # PayloadError: sai nhãn, phiên bản, độ dài
                 batch = None
             if not batch or batch.root.hex() != r["root"] or batch.batch_no != r["batchNo"] \
-                    or not r["fromSeq"] <= r["seq"] < r["fromSeq"] + batch.record_count:
+                    or batch.from_seq != r["fromSeq"] or not batch.contains(r["seq"]):
                 bad_payloads.append(f["fileCode"])
             payloads[r["txHash"]] = r["payload"]
     except (KeyError, TypeError, ValueError, AttributeError) as exc:

@@ -186,17 +186,17 @@ Cây hai tầng: bản ghi trong đợt chia nhóm theo người ghi (`actor_id`
 xếp theo seq). Lá = `SHA256(0x00 ‖ recordHash)`, nút trong = `SHA256(0x01 ‖ trái ‖ phải)`, tầng lẻ thì nút cuối đẩy
 thẳng lên. Mỗi nhóm ra một `subRoot`; tầng trên dựng cây trên các `subRoot` (vào như một nút, không thêm 0x00).
 
-Payload (big-endian; mọi dòng: nhãn 4 byte ‖ phiên bản 1 byte ‖ nội dung). ANCH theo tài liệu kỹ thuật 1027_Tech
-(`backend/app/core/payload.py`). KEYR, NOOP cùng quy ước, chưa có trong tài liệu, nhóm cần chốt
-(`backend/app/core/anchor_payload.py`):
+Payload (big-endian; mọi dòng: nhãn 4 byte ‖ phiên bản 1 byte ‖ nội dung). ANCH theo 1026_Tech, nhóm chốt hướng A
+(`backend/app/core/payload.py`). KEYR, NOOP cùng quy ước (`backend/app/core/anchor_payload.py`). Mẫu thử:
+`docs/test-vectors.json` → `chain_lines`.
 
 | Loại | Byte | Nội dung |
 |---|---|---|
-| ANCH | 85 | `"ANCH"` ‖ version ‖ batch_no u64 ‖ record_count u64 ‖ prev_root 32 ‖ root 32 |
-| KEYR | 35 | `"KEYR"` ‖ version ‖ key_no u16 (`RECEIPT_KEY_NO`) ‖ địa chỉ khóa ký biên nhận EIP-191 20 byte ‖ from_seq u64 |
-| NOOP | 13 | `"NOOP"` ‖ version ‖ batch_no u64 |
+| ANCH | 93 | `"ANCH"` ‖ version ‖ batch_no u64 ‖ from_seq u64 ‖ to_seq u64 ‖ prev_root 32 ‖ root 32 |
+| KEYR | 37 | `"KEYR"` ‖ version ‖ key_id u32 (`RECEIPT_KEY_NO`, cùng keyId trong 58 byte được ký) ‖ địa chỉ khóa ký biên nhận EIP-191 20 byte ‖ from_seq u64 |
+| NOOP | 13 | `"NOOP"` ‖ version ‖ nonce u64 (nonce của giao dịch kẹt bị thay) |
 
-ANCH không ghi from_seq: `from_seq` = `to_seq` đợt trước + 1, `record_count` = `to_seq − from_seq + 1`.
+Đợt liền nhau (`check_contiguous`): batch_no +1, `prev_root` = root đợt trước, `from_seq` = `to_seq` đợt trước + 1. Đợt 1: `prev_root` toàn 0, `from_seq` = 1. Hở hoặc chồng số thứ tự bản ghi là bị phát hiện.
 
 ## ANCHORLEAF (mỗi bản ghi là một lá)
 
