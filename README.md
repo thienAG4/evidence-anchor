@@ -1,270 +1,395 @@
 # EvidenceChain
 
-Lưu chứng bằng chứng số (ảnh, ghi âm, video, văn bản…) bằng **SHA-256** và ghi dấu lên testnet **Ethereum Sepolia**.
-File gốc **không bao giờ lên blockchain** — chỉ có dấu vân tay (hash). Ai giữ file gốc và biên nhận đều có thể tự kiểm tra
-file còn nguyên vẹn và đã tồn tại trước thời điểm block được ghi.
+Hệ thống lưu chứng bằng chứng số (ảnh, ghi âm, video, văn bản) cho quy trình tố tụng dân sự. Mỗi file được băm
+SHA-256, ghi vào nhật ký chỉ ghi thêm, rồi gom theo đợt và neo mã tổng hợp lên **Ethereum Sepolia**. Ai giữ file gốc
+và biên nhận đều tự kiểm tra được file còn nguyên vẹn và đã tồn tại trước một block, không cần hỏi Tòa.
 
-**Demo:** https://evidence-anchor.streamlit.app
-
-> Đây là dự án học tập. Chỉ dùng **ví test** trên Sepolia, không dùng ví có tiền thật.
+> Đây là đồ án học tập. Chỉ dùng **ví test** trên Sepolia, không dùng ví có tiền thật.
 
 ---
 
-## 1. Cơ chế xử lý
+## 1. Giới thiệu
 
-### 1.1. Sơ đồ gộp hash
+Chứng cứ điện tử dễ bị tranh cãi: file có bị sửa sau khi nộp không, nộp lúc nào, Tòa có giữ đúng bản đã nhận không.
+EvidenceChain ghi lại **dấu vân tay** (hash) của file tại thời điểm lưu chứng và công khai bằng chứng đó trên chuỗi,
+để bất kỳ ai cũng đối chiếu được sau này.
+
+| Vai trò | Dùng hệ thống để |
+|---|---|
+| Đương sự | Lưu chứng file trước khi khởi kiện, nhận biên nhận, tự kiểm tra biên nhận |
+| Thư ký Tòa | Nhận lô chứng cứ, đối chiếu file với bản đã lưu chứng, ghi kết quả |
+| Thẩm phán, luật sư | Xem kết quả đối chiếu trong vụ (qua API) |
+| Người kiểm tra độc lập | Kiểm tra biên nhận và file gốc trên trang công khai, hoặc tự tính lại theo `docs/test-vectors.json` |
+
+Hash tính ở máy chủ: file được tải lên để băm rồi bỏ ngay, hệ thống không lưu nội dung file. Trên chuỗi chỉ có mã tổng
+hợp của cả đợt, không có hash từng file hay thông tin người dùng.
+
+## 2. Tính năng chính
+
+Theo [`docs/proposal.md`](docs/proposal.md):
+
+| Mã | Tính năng |
+|---|---|
+| F1 | Đương sự lưu chứng nhiều file một lần, nhận một mã biên nhận và mã riêng từng file |
+| F2, F3 | Nộp lô chứng cứ tại Tòa; hệ thống tự so hash với bản đã lưu chứng (KHỚP / KHÁC BẢN LƯU CHỨNG / KHÔNG CÓ MỐC) |
+| F4 | Giám định: so hash khi file đi, nhận, về |
+| F5 | Xem kết quả trong phiên họp, xét xử |
+| F6 | Nhật ký chỉ ghi thêm, không sửa, không xóa được |
+| F7 | Gắn chứng cứ và bản lưu chứng với vụ án |
+| F8 | Đăng nhập, phân quyền theo vụ, nhật ký truy cập |
+| F9 | Chốt hồ sơ khi kháng cáo, phúc thẩm đối chiếu lại |
+
+Phần neo và kiểm chứng:
+
+- **Neo theo đợt** lên Sepolia, có hai chế độ: neo ngay sau mỗi lần ghi (demo) hoặc mỗi ngày một đợt. Có nút
+  **Neo ngay** để khóa sớm, và tự **neo bù** khi worker tắt hay mất mạng.
+- **Biên nhận có chữ ký** EIP-191 trên từng bản ghi và trên cả biên nhận.
+- **Trang tự kiểm tra công khai**: kiểm 13 mục, từ chữ ký tới giao dịch trên chuỗi, không cần tài khoản.
+- **OpenTimestamps**: trình duyệt của đương sự tự đóng dấu hash file lên Bitcoin, độc lập với Tòa và Ethereum.
+- **Chống lỗi khi neo**: phát hiện ví bị dùng bên ngoài thì dừng, gửi lại giao dịch kẹt, giới hạn số lần gửi lại.
+
+## 3. Kiến trúc
 
 ```
-File 1 ─► H1 ─┐                         (t1 = lúc hash xong File 1)
-     t1 ─► Ht1 ┴─► Ha = SHA256(H1 ‖ Ht1)
-              ⏸ nghỉ ngẫu nhiên 1.00–3.00 giây
-File 2 ─► H2 ─┐
-     t2 ─► Ht2 ┴─► Hb = SHA256(H2 ‖ Ht2)
-              ⏸ nghỉ ngẫu nhiên 1.00–3.00 giây
-File 3 ─► H3 ─┐
-     t3 ─► Ht3 ┴─► Hc = SHA256(H3 ‖ Ht3)
-
-Ha, Hb, Hc (sắp theo Hi giảm dần) ─► Habc = SHA256(Ha ‖ Hb ‖ Hc)
-                    tB = lúc Habc tính xong ─► HtB = SHA256(tB)
-                                    Bundle = SHA256(Habc ‖ HtB)
+                    ┌───────────── Trình duyệt (HTML/CSS/JS thuần) ─────────────┐
+                    │  đương sự · thư ký · trang kiểm tra công khai             │
+                    └──────┬───────────────────────────────────────┬────────────┘
+                           │ REST API                              │ hash đã trộn nonce
+                           ▼                                       ▼
+   ┌──────────────── FastAPI ────────────────┐         Máy chủ lịch OpenTimestamps ──► Bitcoin
+   │ băm file, dựng biên nhận, ký EIP-191     │
+   │ /verify kiểm biên nhận                    │
+   └──────┬───────────────────────────────────┘
+          │ chỉ ghi thêm
+          ▼
+   PostgreSQL ── log_record (bản ghi 164 byte nối chuỗi), anchor_batch, chain_tx, ots_stamp ...
+          ▲
+          │ tiến trình riêng, nơi duy nhất gửi giao dịch
+   Worker neo ── chốt đợt, dựng cây Merkle, gửi ANCH ──► Ethereum Sepolia (theo dõi tới FINALIZED)
 ```
 
-### 1.2. Từng bước
+| Lớp | Công nghệ |
+|---|---|
+| Backend | Python 3.12, FastAPI, SQLAlchemy, Alembic |
+| Database | PostgreSQL 16 (Docker), tài khoản ứng dụng chỉ có quyền SELECT, INSERT trên bảng nhật ký |
+| Chuỗi | web3.py 8, eth-account (EIP-191), Sepolia qua RPC công khai |
+| OpenTimestamps | thư viện `opentimestamps` (server), tự ghép file .ots trong trình duyệt (`frontend/assets/js/data/ots.js`) |
+| Frontend | HTML, CSS, JavaScript thuần, không cần build; backend phục vụ luôn thư mục `frontend/` |
 
-| Bước | Công thức | Ghi chú |
+## 4. Cơ chế kỹ thuật
+
+Số nguyên luôn là big-endian không dấu. Ký hiệu `‖` là nối **byte nhị phân** (không nối chuỗi hex). Mọi công thức dưới
+đây có dữ liệu mẫu và mẫu phải từ chối trong [`docs/test-vectors.json`](docs/test-vectors.json).
+
+### 4.1. Hash file và bundle
+
+| Bước | Công thức |
+|---|---|
+| Hash file | `Hi = SHA256(file)`, đọc theo khúc 1 MB |
+| Thời điểm | `ti` = giờ máy chủ lúc băm xong, ví dụ `2026-11-06T03:15:48.50+07:00`; người dùng không nhập |
+| Lá của file | `Ha = SHA256(Hi ‖ SHA256(ti))` |
+| Gộp lần nộp | `Habc = SHA256(Ha ‖ Hb ‖ …)`, lá sắp theo Hi giảm dần nên thứ tự chọn file không ảnh hưởng |
+| Bundle | `Bundle = SHA256(Habc ‖ SHA256(tB))`, `tB` là lúc gộp xong |
+
+Giữa hai file, hệ thống nghỉ ngẫu nhiên 1 đến 3 giây để mỗi file có mốc thời gian riêng. Lô chứng cứ tại Tòa dùng công
+thức `court-lot-v1`: thêm `SHA256("nơi nộp|số file")` vào bundle. Bundle nằm trong biên nhận và được ký, không lên chuỗi.
+Mã nguồn: [`backend/app/core/hashing.py`](backend/app/core/hashing.py).
+
+### 4.2. Bản ghi 164 byte và chuỗi hash
+
+Mỗi sự kiện (A lưu chứng, E đối chiếu, C giám định, D chốt hồ sơ) là một bản ghi dài cố định:
+
+```
+"EVC-REC-v1" 10 | seq u64 | type u8 | fileHash 32 | caseRef 32 | actorRef 32 | ts u64 | result u8 | refSeq u64 | prevRecordHash 32
+```
+
+`recordHash = SHA256(164 byte)`. Mỗi bản ghi giữ hash của bản ghi trước, nên sửa hay xóa một bản ghi cũ làm đứt
+cả chuỗi phía sau. Mã nguồn: [`backend/app/core/record.py`](backend/app/core/record.py).
+
+### 4.3. Cây Merkle hai tầng
+
+Theo RFC 6962: lá = `SHA256(0x00 ‖ recordHash)`, nút trong = `SHA256(0x01 ‖ trái ‖ phải)`, tầng lẻ thì nút cuối đẩy
+thẳng lên. Bản ghi trong đợt được nhóm theo người ghi. Mỗi nhóm cho một `subRoot`, rồi tầng trên dựng cây trên các
+`subRoot` để ra **root của đợt**. Biên nhận chứa `groupPath` (lá tới subRoot) và `batchPath` (subRoot tới root).
+Mã nguồn: [`backend/app/core/merkle.py`](backend/app/core/merkle.py).
+
+### 4.4. Dòng ghi lên chuỗi
+
+Mỗi dòng là `data` của một giao dịch 0 ETH từ ví neo gửi cho chính nó: nhãn 4 byte ‖ phiên bản 1 byte ‖ nội dung.
+
+| Nhãn | Byte | Nội dung |
 |---|---|---|
-| Hash file | `Hi = SHA256(nội dung file i)` | Đọc từng khúc 1MB → file lớn (video) không tốn RAM |
-| Thời điểm hash | `ti` = giờ VN lúc hash xong, chính xác 1/100 giây | Dạng `2026-11-01T23:53:25.61+07:00`, do **hệ thống tự lấy**, người dùng không nhập |
-| Hash thời điểm | `Hti = SHA256(ti)` | Chuỗi UTF-8 |
-| Lá của file | `Ha = SHA256(Hi ‖ Hti)` | Gắn nội dung với thời điểm của chính file đó |
-| Nghỉ | `sleep(random 1.00–3.00 s)` | Giữa 2 file liên tiếp, để mỗi file có mốc thời gian tách biệt |
-| Gộp | `Habc = SHA256(Ha ‖ Hb ‖ …)` | Các lá **sắp theo Hi giảm dần (Z→A)** → thứ tự chọn file không ảnh hưởng kết quả |
-| Bundle | `Bundle = SHA256(Habc ‖ SHA256(tB))` | `tB` = lúc Habc tính xong |
+| ANCH | 93 | `batchId u64 ‖ fromSeq u64 ‖ toSeq u64 ‖ prevRoot 32 ‖ root 32` |
+| KEYR | 37 | `keyId u32 ‖ địa chỉ khóa ký biên nhận 20 ‖ fromSeq u64`; giao dịch đầu tiên của ví |
+| NOOP | 13 | `nonce u64` của giao dịch kẹt bị thay |
 
-Ký hiệu `‖` là **nối 32 byte nhị phân** của từng hash (không phải nối chuỗi hex). Vì mỗi hash dài cố định 32 byte,
-cách ghép không thể bị hiểu nhầm ranh giới. Toàn bộ nằm trong [`backend/app/core/hashing.py`](backend/app/core/hashing.py).
+Quy tắc liền mạch: đợt 1 có `prevRoot` toàn 0 và `fromSeq = 1`; đợt sau có `batchId` tăng 1, `prevRoot` bằng root đợt
+trước, `fromSeq` bằng `toSeq` đợt trước cộng 1. Người kiểm tra nhờ đó phát hiện được bản ghi bị bỏ sót hoặc bị neo hai
+lần. Mã nguồn: [`backend/app/core/payload.py`](backend/app/core/payload.py),
+[`anchor_payload.py`](backend/app/core/anchor_payload.py).
 
-> Vì sao không dùng XOR / cộng / nhân để gộp? Các phép này không phải hàm băm: XOR làm 2 file trùng nhau tự triệt tiêu
-> (H ⊕ H = 0) và có thể bị tấn công tìm bộ file khác cho cùng kết quả. Bước gộp cuối luôn là SHA-256.
+### 4.5. Chữ ký biên nhận
 
-### 1.3. Ghi lên Sepolia
+Khóa ký biên nhận (EIP-191, secp256k1) khác khóa ví neo. Nội dung ký dài cố định 58 byte:
 
-Không dùng smart contract. Mỗi hash được ghi bằng **1 giao dịch 0 ETH gửi cho chính ví mình**, hash nằm trong trường
-`data` (`0x` + hash). Mỗi lần nộp tạo **N + 1 giao dịch**:
+```
+"EVC-RECEIPT-v1" 14 | keyId u32 | seq u64 | recordHash 32
+```
 
-- 1 giao dịch chứa **Bundle**
-- N giao dịch, mỗi giao dịch chứa **Hi** (hash nội dung) của một file
+Biên nhận có hai lớp chữ ký: mỗi file một chữ ký trên bản ghi của nó (`files[].recordSignature`), và một chữ ký trên
+cả biên nhận (recordHash thay bằng `SHA256(JSON biên nhận)`) để giữ bundle, tên file, giờ có phần trăm giây khỏi bị
+sửa. Người kiểm tra khôi phục địa chỉ từ chữ ký rồi so với địa chỉ đã công bố (`GET /signing-key`, dòng KEYR).
 
-Nếu một giao dịch file bị lỗi sau khi bundle đã lên chain, biên nhận vẫn được tạo và ghi lỗi tại file đó (không mất
-dấu bundle đã trả phí). Xem [`backend/app/core/chain.py`](backend/app/core/chain.py).
+### 4.6. Vòng đời một đợt neo
 
-### 1.4. Về thời gian
+```
+PENDING (chốt đợt, cấp nonce, lưu đúng byte sẽ gửi) → SUBMITTED → CONFIRMED (lên khối) → FINALIZED (khoảng 13 phút)
+```
 
-- `hashedAt`, `bundledAt` là **giờ của máy chủ** — hữu ích để mô tả quy trình, nhưng do hệ thống tự ghi.
-- **Giờ của block** (`blockTimeVN`) mới là mốc do blockchain xác nhận: bằng chứng chắc chắn **đã tồn tại trước** thời điểm đó.
+Biên nhận chỉ **hoàn chỉnh** khi block đã chốt. Giao diện hiện ba bước: Đã ghi nhận, Đã khóa, Tòa đã kiểm tra.
 
----
+| `ANCHOR_MODE` | Khi nào chốt đợt |
+|---|---|
+| `per_submission` | Mỗi vòng worker (`ANCHOR_INTERVAL_SECONDS`, mặc định 15 giây) gom mọi bản ghi đang chờ |
+| `daily` | Mỗi ngày (giờ Việt Nam) một đợt ở mốc `ANCHOR_DAILY_CUTOFF` (mặc định 23:59); ngày bị lỡ thì neo bù, vẫn mỗi ngày một đợt; ngày không có bản ghi thì không neo |
 
-## 2. Biên nhận (receipt JSON)
+Nút **Neo ngay** trên trang chi tiết biên nhận (`POST /anchor/now`) cho worker chốt các bản ghi đang chờ ở vòng kế,
+không đợi mốc ngày. `GET /anchor/schedule` cho biết mốc khóa kế tiếp.
+
+### 4.7. Chống lỗi khi neo
+
+| Tình huống | Cách xử lý |
+|---|---|
+| Ví bị dùng ngoài worker | Nonce trên mạng vượt nonce đã cấp: dừng job neo, chờ người vận hành |
+| Giao dịch thất bại trên chuỗi | Dừng job neo |
+| Mất mạng | Vòng worker lỗi, bản ghi vẫn chờ, vòng sau làm tiếp; giao dịch đã ký được lưu trước khi phát nên không cấp trùng nonce |
+| Giao dịch kẹt | Quá `ANCHOR_RETRY_SECONDS` thì gửi lại cùng payload, cùng nonce, phí gấp đôi; quá `ANCHOR_MAX_REPLACEMENTS` lần thì dừng |
+| Khối bị xếp lại | Trước khi ghi FINALIZED, đọc lại giao dịch từ chuỗi, không tin số khối đã lưu |
+
+NOOP không gửi tự động: thay một ANCH kẹt bằng NOOP sẽ bỏ đợt đó khỏi chuỗi và làm đứt quy tắc liền mạch.
+
+### 4.8. OpenTimestamps
+
+Theo tài liệu kỹ thuật mục 6.9, chỉ cho bản ghi A (lưu chứng của đương sự):
+
+1. Sau khi lưu chứng, trình duyệt lấy `fileHash` trong biên nhận, trộn nonce 16 byte ngẫu nhiên, băm lại rồi gửi tới
+   4 máy chủ lịch. Máy chủ lịch không thấy file, cũng không thấy `fileHash`.
+2. Máy chủ lịch chặn CORS thì gửi qua `POST /ots/relay/{i}`; máy chủ Tòa cũng chỉ thấy giá trị đã trộn nonce.
+3. Trình duyệt ghép file .ots chuẩn (đọc được bằng `ots verify` hoặc opentimestamps.org), gửi bản chờ lên server và cho
+   đương sự tải về giữ riêng.
+4. Worker nâng cấp mỗi giờ (`OTS_UPGRADE_SECONDS`), ghi log ERROR nếu quá 48 giờ chưa có xác nhận của Bitcoin.
+
+## 5. Biên nhận và cách tự kiểm tra
+
+Biên nhận tải về từ trang chi tiết (`GET /receipts/{code}`) có dạng:
 
 ```jsonc
 {
-  "bundleScheme": "per-file-time-v2",
-  "algorithm": "SHA-256",
-  "network": "Sepolia",
-  "anchoredBy": "0x…",                 // ví đã ghi
-  "submittedAt": "2026-11-01T23:53:25.61+07:00",
-  "files": [
-    {
-      "fileName": "anhchup.jpg",
-      "fileHash": "4c9b…",              // Hi
-      "hashedAt": "2026-11-01T23:53:25.61+07:00",   // ti
-      "timeHash": "…",                  // Hti
-      "leafHash": "…",                  // Ha
-      "sleepAfterSeconds": 2.25,
-      "tx": { "txHash": "0x…", "explorerUrl": "https://sepolia.etherscan.io/tx/0x…",
-              "blockNumber": 12042325, "blockTimeVN": "01/11/2026 23:53:48", "…": "…" }
-    }
-  ],
-  "bundle": {
-    "order": ["…"],                     // thứ tự Hi đã dùng khi gộp
-    "habc": "…",
-    "bundledAt": "2026-11-01T23:53:30.56+07:00",
-    "bundleTimeHash": "…",
-    "bundleHash": "a6b1…",
-    "tx": { "txHash": "0x…", "explorerUrl": "…", "blockNumber": 12042324, "blockTimeVN": "…" }
-  }
+  "receipt": {                         // phần được ký
+    "receiptCode": "TX-0042", "type": "SELF", "submittedAt": "…", "bundleScheme": "per-file-time-v2",
+    "files": [{ "fileCode": "TX-0042-1", "fileName": "…", "fileHash": "…", "hashedAt": "…", "timeHash": "…",
+                "leafHash": "…", "seq": 192, "recordHash": "…", "recordSignature": "0x…" }],
+    "bundle": { "habc": "…", "bundledAt": "…", "bundleHash": "…" },
+    "signer": { "algorithm": "EIP-191", "keyNo": 1, "address": "0x…" }
+  },
+  "signature": "0x…",                  // chữ ký trên cả biên nhận
+  "anchor": {                          // có khi block đã chốt
+    "records": [{ "fileCode": "…", "seq": 192, "raw": "164 byte hex", "groupPath": [], "batchPath": [],
+                  "root": "…", "payload": "ANCH 93 byte hex", "txHash": "0x…", "explorerUrl": "…" }]
+  },
+  "ots": [{ "fileCode": "…", "status": "PENDING", "ots": "base64" }]
 }
 ```
 
-Mỗi lần tạo biên nhận thành công, một dòng tóm tắt được ghi vào `history.json` (tab **Lịch sử**).
+Trang **Kiểm tra biên nhận** (`frontend/pages/public/verify-receipt.html`, gọi `POST /verify`) không cần đăng nhập.
+Đưa biên nhận và file gốc vào, hệ thống kiểm:
 
-## 3. Cách kiểm tra (tab "Kiểm tra tệp" hoặc tự làm tay)
+| # | Mục kiểm |
+|---|---|
+| 1 | Chữ ký hệ thống trên biên nhận |
+| 2 | Chữ ký hệ thống trên bản ghi của từng file (58 byte) |
+| 3 | File tải lên khớp hash trong biên nhận |
+| 4 | Tính lại Hti, Ha từng file |
+| 5 | Tính lại Habc, Bundle |
+| 6 | OpenTimestamps: file .ots đóng dấu đúng hash từng file (khi biên nhận có phần `ots`) |
+| 7 | Bản ghi 164 byte của từng file chứa đúng hash file |
+| 8 | Đường dẫn Merkle từ từng bản ghi tới root đợt neo |
+| 9 | Dữ liệu đợt neo (ANCH) chứa root và khoảng số thứ tự có bản ghi |
+| 10 | Giao dịch neo tồn tại và thành công |
+| 11 | Block chứa giao dịch đã chốt (finalized) |
+| 12 | Input Data của giao dịch bằng dữ liệu đợt neo |
+| 13 | Giao dịch gửi từ ví của hệ thống |
 
-1. Hash lại từng file gốc, so với `fileHash` trong biên nhận (so theo **hash**, đổi tên file không ảnh hưởng).
-2. Từ `fileHash` + `hashedAt` + `bundledAt` trong biên nhận, tính lại `Ha…`, `habc`, `bundleHash` theo mục 1.2 — phải khớp.
-   Nếu ai sửa thời gian hay hash trong biên nhận, bước này sẽ sai.
-3. Mở `explorerUrl` trên Etherscan: giao dịch thành công, gửi từ **ví của hệ thống** (đối chiếu với địa chỉ ví công bố,
-   không chỉ tin trường `anchoredBy` trong biên nhận), và **Input Data** = `0x` + hash tương ứng.
+Không đạt thì trang chỉ ra mục và file sai, nhưng không kết luận ai đã sửa: nén hay chuyển mã file cũng cho kết quả này.
 
----
+Kiểm tra không cần hệ thống:
 
-## 4. Cấu trúc dự án
+- Tính lại hash, bundle, bản ghi, cây Merkle theo `docs/test-vectors.json`, viết bằng ngôn ngữ nào cũng được.
+- Mở `explorerUrl` trên Etherscan: Input Data phải bằng `payload`, gửi từ địa chỉ ví neo đã công bố.
+- Đối chiếu file .ots với Bitcoin bằng opentimestamps.org hoặc lệnh `ots verify`.
+
+## 6. Cấu trúc thư mục
 
 ```
 evidence-anchor/
 ├── backend/
-│   ├── app/                              # FastAPI
-│   │   ├── main.py                       # tạo app, gắn router
-│   │   ├── config.py                     # đọc .env
-│   │   ├── labels.py                     # nhãn hiển thị (KHỚP/KHÁC...), trạng thái neo
+│   ├── app/
+│   │   ├── main.py, config.py, labels.py
 │   │   ├── core/
-│   │   │   ├── hashing.py                # Hash file/timestamp, bundle per-file-time-v2, hash tổng lô court-lot-v1
-│   │   │   ├── merkle.py                 # Cây Merkle cho neo theo ngày
-│   │   │   ├── signing.py, receipt.py    # Dựng + ký biên nhận (EIP-191)
-│   │   │   ├── security.py               # Mật khẩu (scrypt), JWT
-│   │   │   ├── file_types.py             # Chỉ nhận PDF, ảnh, video, âm thanh (đuôi + nội dung)
-│   │   │   └── chain.py                  # Ghi hash lên Sepolia, kiểm tra giao dịch
-│   │   ├── routers/                      # auth.py, submissions.py
-│   │   ├── services/                     # auth, submission, anchor; legacy_receipt_service.py (bản Streamlit)
-│   │   ├── workers/anchor_worker.py      # Tiến trình riêng: neo lên Sepolia, thử lại khi lỗi
-│   │   ├── dependencies/                 # đăng nhập, phân quyền, kiểm tra file tải lên
-│   │   ├── errors/, schemas/
-│   │   └── db/
-│   │       ├── models/                   # 13 entity, xem docs/entities.md
-│   │       └── history.py                # Lịch sử biên nhận (history.json) — bản Streamlit
-│   ├── alembic/                          # migration (có cấp quyền chỉ ghi thêm — F6)
-│   ├── docker/postgres-init/             # tạo role evidence_app khi dựng DB lần đầu
+│   │   │   ├── hashing.py            # hash file, bundle per-file-time-v2, court-lot-v1
+│   │   │   ├── record.py             # bản ghi 164 byte EVC-REC-v1, kiểm chuỗi hash
+│   │   │   ├── log_record.py         # chuyển kiểu giữa model và record.py
+│   │   │   ├── merkle.py             # cây Merkle RFC 6962 hai tầng
+│   │   │   ├── payload.py            # ANCH 93 byte, quy tắc liền mạch
+│   │   │   ├── anchor_payload.py     # KEYR, NOOP
+│   │   │   ├── signing.py, receipt.py   # chữ ký EIP-191 58 byte, dựng biên nhận
+│   │   │   ├── chain.py, chain_reader.py  # ký, gửi, đọc giao dịch Sepolia
+│   │   │   ├── ots.py                # đọc, nâng cấp file .ots
+│   │   │   ├── security.py           # mật khẩu scrypt, JWT
+│   │   │   └── file_types.py         # chỉ nhận PDF, ảnh, video, âm thanh (đuôi và nội dung)
+│   │   ├── routers/                  # auth, submissions, clerk, cases, lots, dossiers, verify, admin, anchoring
+│   │   ├── services/                 # nghiệp vụ: submission, lot, appraisal, dossier, anchor, ots, verify ...
+│   │   ├── workers/
+│   │   │   ├── anchor_worker.py      # tiến trình neo (và nâng cấp OpenTimestamps mỗi giờ)
+│   │   │   └── ots_upgrade.py        # chạy nâng cấp OpenTimestamps một lần
+│   │   ├── db/models/                # 17 bảng, xem docs/entities.md
+│   │   ├── dependencies/, errors/, schemas/
+│   ├── alembic/                      # migration, gồm cấp quyền chỉ ghi thêm (F6)
+│   ├── docker/postgres-init/         # tạo role evidence_app khi dựng DB lần đầu
 │   ├── scripts/
-│   │   ├── seed.py                       # tạo tài khoản + vụ án mẫu để test
-│   │   └── demo_cli.py                   # Chạy thử bằng dòng lệnh (bản Streamlit)
-│   ├── requirements.txt                  # Thư viện cho backend FastAPI
+│   │   ├── seed.py                   # tài khoản và vụ án mẫu
+│   │   ├── gen_test_vectors.py       # sinh docs/test-vectors.json
+│   │   └── e2e_f1.py, e2e_court.py   # kiểm thử trọn quy trình qua API
+│   ├── tests/                        # test_vectors.py, test_ots.py, test_anchor_worker.py
+│   ├── requirements.txt
 │   └── .env.example
-├── docs/                                 # proposal, backlog, entities, api; postman/ (collection để test)
-├── frontend/                             # Giao diện HTML/CSS/JS (xem frontend/README.md), backend phục vụ ở :8000
-│   ├── pages/, assets/                   # trang đương sự + thư ký; assets/js/data/api.js gọi API
-│   └── app.py                            # Giao diện Streamlit cũ: Tạo biên nhận / Kiểm tra tệp / Lịch sử
-├── docker-compose.yml                    # PostgreSQL cho máy dev
-├── requirements.txt                      # Để ở gốc vì Render / Streamlit Cloud đọc ở đây
-└── render.yaml                           # Cấu hình deploy lên Render
+├── frontend/                         # xem frontend/README.md
+│   ├── pages/                        # auth, litigant (lưu chứng, biên nhận), clerk, public (kiểm tra biên nhận)
+│   └── assets/                       # css, js (data/api.js gọi API, data/ots.js đóng dấu OpenTimestamps)
+├── docs/                             # proposal, backlog, entities, api, test-vectors.json, postman/
+└── docker-compose.yml                # PostgreSQL cho máy dev
 ```
 
-API đã có đủ F1–F9 theo `docs/api.md`. Chưa làm: neo theo ngày (`ANCHOR_MODE=daily`), giao diện HTML thay Streamlit.
+## 7. Cài đặt và chạy
 
-## 5. Chạy trên máy
+### 7.1. Yêu cầu
 
-Cần **Python 3.11 trở lên** (`streamlit==1.66.1` không cài được trên 3.10). Trên Windows có nhiều bản Python thì
-dùng `py -3.13` để chọn đúng bản:
+- Python 3.12
+- Docker Desktop (để chạy PostgreSQL)
+- Ví test trên Sepolia có ít ETH (xin từ faucet), chỉ cần nếu muốn neo thật
 
-```bash
-py -3.13 -m venv venv            # macOS/Linux: python3 -m venv venv
-venv\Scripts\activate            # macOS/Linux: source venv/bin/activate
-pip install -r requirements.txt
-```
+### 7.2. Cấu hình
 
-PowerShell chặn `activate` thì chạy thẳng bằng Python trong venv, không cần kích hoạt:
-`venv\Scripts\python.exe -m streamlit run frontend/app.py`
+Sao chép [`backend/.env.example`](backend/.env.example) thành `.env` ở thư mục gốc repo rồi điền giá trị. File `.env`
+đã nằm trong `.gitignore`, không commit.
 
-Tạo file `.env` (đã nằm trong `.gitignore`, **không commit**):
+| Biến | Ý nghĩa |
+|---|---|
+| `DATABASE_URL` | Tài khoản ứng dụng `evidence_app` (không UPDATE, DELETE được bảng nhật ký) |
+| `MIGRATION_DATABASE_URL` | Chủ sở hữu bảng, chỉ để chạy migration |
+| `SEPOLIA_RPC_URL` | RPC Sepolia, mặc định RPC công khai |
+| `PRIVATE_KEY` | Khóa ví neo (ví test). Trống thì không neo, biên nhận ở trạng thái "Chờ neo" |
+| `ANCHOR_WALLET_ADDRESS` | Địa chỉ công khai của ví neo, để `/verify` kiểm ai gửi giao dịch |
+| `RECEIPT_SIGNING_KEY` | Khóa ký biên nhận, khác khóa ví neo |
+| `RECEIPT_KEY_NO`, `RECEIPT_SIGNER_ADDRESS` | Số khóa ký và địa chỉ đã công bố (tùy chọn) |
+| `JWT_SECRET` | Khóa ký phiên đăng nhập |
+| `ANCHOR_MODE` | `per_submission` (mặc định) hoặc `daily` |
+| `ANCHOR_DAILY_CUTOFF` | Mốc khóa mỗi ngày ở chế độ `daily`, mặc định `23:59` |
+| `ANCHOR_INTERVAL_SECONDS`, `ANCHOR_RETRY_SECONDS`, `ANCHOR_MAX_REPLACEMENTS` | Chu kỳ worker, thời gian coi là kẹt, số lần gửi lại tối đa |
+| `OTS_UPGRADE_SECONDS`, `OTS_ALARM_HOURS` | Chu kỳ nâng cấp OpenTimestamps (3600), ngưỡng báo động (48) |
+| `REQUIRE_ANCHOR_BEFORE_VERIFY` | `true`: thư ký chỉ đối chiếu biên nhận đã neo |
 
-```
-SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
-PRIVATE_KEY=0x...khóa_ví_test
-```
-
-Xin Sepolia ETH miễn phí từ một faucet cho ví test, rồi chạy:
-
-```bash
-streamlit run frontend/app.py    # giao diện web
-python backend/scripts/demo_cli.py   # hoặc chạy thử dòng lệnh, ra receipt.json
-```
-
-### 5.1. Backend FastAPI + PostgreSQL
-
-Cần Docker Desktop đang chạy. Mẫu `.env` đầy đủ: [`backend/.env.example`](backend/.env.example)
-(thêm `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `RECEIPT_SIGNING_KEY`, `JWT_SECRET`, `ANCHOR_WALLET_ADDRESS`).
+### 7.3. Chạy trên máy
 
 ```powershell
+py -3.12 -m venv venv
 venv\Scripts\python.exe -m pip install -r backend/requirements.txt
-docker compose up -d db                                    # PostgreSQL ở localhost:5432
+docker compose up -d db                                   # PostgreSQL ở localhost:5432
 cd backend
-..\venv\Scripts\python.exe -m alembic upgrade head         # tạo bảng + quyền
+..\venv\Scripts\python.exe -m alembic upgrade head        # tạo bảng và phân quyền
+..\venv\Scripts\python.exe scripts/seed.py                # tài khoản và vụ án mẫu
 cd ..
-venv\Scripts\python.exe backend/scripts/seed.py            # tài khoản test
 venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --reload --reload-dir backend
 ```
 
-Mở **http://localhost:8000** để vào giao diện (đăng nhập `duongsu / 1234` hoặc `thuky / 5678`),
-http://localhost:8000/docs để xem API. Worker neo chạy ở **terminal khác** (cần `PRIVATE_KEY` có Sepolia ETH):
+Mở **http://localhost:8000** để vào giao diện, **http://localhost:8000/docs** để xem API. Worker neo chạy ở một
+terminal khác (cần `PRIVATE_KEY` có Sepolia ETH):
 
 ```powershell
 cd backend
 ..\venv\Scripts\python.exe -m app.workers.anchor_worker
 ```
 
-Không chạy worker thì biên nhận vẫn tạo được, chỉ ở trạng thái "Chờ neo".
+Không chạy worker thì vẫn lưu chứng và nhận biên nhận bình thường, chỉ dừng ở trạng thái "Chờ neo".
 
-Kiểm thử trọn quy trình lưu chứng (đăng nhập → nộp → tra cứu → chờ neo → tự kiểm tra biên nhận → phát hiện chỉnh sửa):
+### 7.4. Tài khoản test
 
-```powershell
-venv\Scripts\python.exe backend/scripts/e2e_f1.py                     # tự tạo ảnh, ghi âm, PDF mẫu
-venv\Scripts\python.exe backend/scripts/e2e_f1.py anh.jpg ghiam.m4a    # dùng file của bạn
-```
-
-Kiểm thử trọn quy trình tại Tòa (tạo vụ → lưu chứng → nạp lô → KHỚP/KHÁC/KHÔNG CÓ MỐC → xem kết quả → tính lại
-→ giám định → kháng cáo, chốt hồ sơ → phúc thẩm đối chiếu → /verify → nhật ký truy cập). Mỗi lần chạy tạo 1 vụ mới:
-
-```powershell
-venv\Scripts\python.exe backend/scripts/e2e_court.py
-```
-
-Tài khoản có sẵn (sau khi chạy `seed.py`), đăng nhập `POST /auth/login` với `{username, password}`:
+Tạo bởi `seed.py`:
 
 | Tên đăng nhập | Mật khẩu | Vai trò |
 |---|---|---|
 | `duongsu` | `1234` | Đương sự (nguyên đơn vụ mẫu) |
 | `thuky` | `5678` | Thư ký TAND Quận 1 |
-| `bidon` | `1234` | Đương sự (bị đơn) — tài khoản phụ để test |
-| `luatsu` | `1234` | Luật sư — tài khoản phụ |
-| `thamphan` | `5678` | Thẩm phán — tài khoản phụ |
-| `thuky.phuctham` | `5678` | Thư ký TAND TP.HCM (phúc thẩm) — tài khoản phụ |
-| `admin` | `5678` | Quản trị — tài khoản phụ |
+| `bidon` | `1234` | Đương sự (bị đơn) |
+| `luatsu` | `1234` | Luật sư |
+| `thamphan` | `5678` | Thẩm phán |
+| `thuky.phuctham` | `5678` | Thư ký TAND TP.HCM (phúc thẩm) |
+| `admin` | `5678` | Quản trị |
 
-Tất cả trừ admin và thư ký phúc thẩm đều tham gia vụ mẫu `01/2026/DS-ST`. Không có đăng ký hay OTP; tài khoản
-mới do admin tạo (`POST /admin/users`).
+Đương sự và thư ký có giao diện web; thẩm phán, luật sư và admin dùng API. Không có đăng ký hay OTP: tài khoản mới
+do admin tạo (`POST /admin/users`).
 
-File chứng cứ chỉ nhận **PDF, ảnh, video, âm thanh**; file khác (.exe, .zip, .docx…) bị từ chối kèm thông báo.
+## 8. Kiểm thử
 
-## 6. Deploy lên Render
+```powershell
+cd backend
+..\venv\Scripts\python.exe -m pytest tests/test_vectors.py tests/test_ots.py
+```
 
-1. Trên [Render](https://render.com): **New → Blueprint**, chọn repo này. Render đọc `render.yaml`.
-2. Khi được hỏi, nhập `PRIVATE_KEY` (khóa ví test). `SEPOLIA_RPC_URL` đã có sẵn giá trị mặc định.
-3. Đợi build xong, mở URL dịch vụ.
+Kiểm định dạng dữ liệu theo `docs/test-vectors.json` (hash, bundle, bản ghi, Merkle, ANCH/KEYR/NOOP, chữ ký) và đọc,
+kiểm file .ots. Không cần database hay mạng.
 
-Lưu ý khi deploy:
+Worker neo được kiểm bằng chuỗi giả trên một **database trống riêng**, không gửi giao dịch thật. Các kịch bản gồm:
+ranh giới ngày, neo bù, ngày trống, Neo ngay, mất mạng, giao dịch kẹt, giao dịch lạ, lưu và nâng cấp OpenTimestamps.
 
-- Gói free của Render có ổ đĩa **tạm thời**: `history.json` sẽ mất khi dịch vụ khởi động lại hoặc deploy lại.
-- Ai có URL đều có thể bấm "Tạo biên nhận" và tiêu Sepolia ETH của ví test — chỉ để ví test, ít tiền.
-- Gói free sẽ "ngủ" khi không có truy cập, lần mở đầu tiên có thể mất ~1 phút.
+```powershell
+$env:TEST_DATABASE_URL = "postgresql+psycopg://evidence_owner:owner_dev_pw@localhost:5432/ec_test"
+..\venv\Scripts\python.exe -m pytest tests/test_anchor_worker.py
+```
 
-## 7. Deploy lên Streamlit Community Cloud
+Kiểm thử trọn quy trình qua API, khi server đang chạy:
 
-1. Vào [share.streamlit.io](https://share.streamlit.io), đăng nhập bằng GitHub.
-2. **Create app → Deploy a public app from GitHub**:
-   - Repository: `thienAG4/evidence-anchor`, Branch: `main`, Main file path: `frontend/app.py`
-   - **Advanced settings → Python 3.12**, và ô **Secrets**:
+```powershell
+venv\Scripts\python.exe backend/scripts/e2e_f1.py --anchor-timeout 1500   # lưu chứng → neo thật → tự kiểm tra → phát hiện sửa
+venv\Scripts\python.exe backend/scripts/e2e_court.py                      # quy trình tại Tòa, mỗi lần chạy tạo một vụ mới
+```
 
-     ```toml
-     SEPOLIA_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
-     PRIVATE_KEY = "0x...khóa_ví_test"
-     ```
-3. Bấm **Deploy**. Streamlit Cloud cài `requirements.txt` ở thư mục gốc; các secret cấp cao nhất được đưa vào
-   biến môi trường nên `backend/app/core/chain.py` đọc `os.environ` như khi chạy trên máy.
+`e2e_f1.py` cần worker neo đang chạy để chờ biên nhận hoàn chỉnh; `--anchor-timeout 0` thì bỏ qua bước neo.
 
-Các lưu ý về ổ đĩa tạm (`history.json`) và việc người khác tiêu ETH của ví test ở mục 6 cũng áp dụng ở đây.
+## 9. Tài liệu liên quan
 
-## 8. Bảo mật
+| File | Nội dung |
+|---|---|
+| [`docs/proposal.md`](docs/proposal.md) | Đề xuất tính năng F1–F9 |
+| [`docs/backlog.md`](docs/backlog.md) | Backlog |
+| [`docs/api.md`](docs/api.md) | Danh sách API, quyền, input, output, mã lỗi |
+| [`docs/entities.md`](docs/entities.md) | Các bảng, cột, quan hệ, luồng worker neo |
+| [`docs/test-vectors.json`](docs/test-vectors.json) | Dữ liệu mẫu và mẫu phải từ chối, cho người viết lại thuật toán |
+| [`docs/postman/`](docs/postman) | Collection Postman để gọi thử API |
+| [`frontend/README.md`](frontend/README.md) | Cấu trúc giao diện, cách chạy riêng frontend |
 
-- Không bao giờ commit `.env` hay private key. Nếu lỡ commit, coi như khóa đã lộ và đổi ví.
-- Hash từng file được ghi **công khai**: ai đã có sẵn một bản file có thể kiểm tra nó có trong hồ sơ hay không.
-- Giữ file gốc cẩn thận — mất file gốc thì hash trên chain không còn để đối chiếu.
+## 10. Phạm vi và giới hạn của đồ án
+
+- Neo ngay sau mỗi lần ghi (`per_submission`) là giả lập cho demo; thiết kế thật là mỗi ngày một đợt (`daily`, đã có).
+- Chỉ chạy trên testnet Sepolia. Ví neo và khóa ký là khóa test trên máy dev, chưa có quản lý khóa (HSM, KMS).
+- KREV (thu hồi khóa ký) và WALL (đổi ví neo) mới có trong đặc tả, chưa có luồng xử lý.
+- OpenTimestamps đã đóng dấu và chờ trên máy chủ lịch thật; bản hoàn chỉnh cần Bitcoin xác nhận sau vài giờ.
+- Đăng nhập VNeID chưa có; thẩm phán, luật sư, admin chưa có giao diện web.
+
+## 11. Bảo mật
+
+- Không commit `.env`, private key hay khóa ký. Lỡ commit thì coi như khóa đã lộ, đổi ví và đổi khóa.
+- Hash trên chuỗi là dữ liệu công khai vĩnh viễn. Hệ thống chỉ neo mã tổng hợp của đợt, nhưng ai có sẵn một bản file và
+  biên nhận vẫn kiểm được file đó đã được lưu chứng.
+- Giữ file gốc cẩn thận: mất file gốc thì không còn gì để đối chiếu với hash.
+- File .ots và biên nhận nên lưu cùng file gốc; các file này không chứa nội dung file.
