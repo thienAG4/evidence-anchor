@@ -1,5 +1,5 @@
 """Tiến trình riêng: mỗi vòng theo dõi giao dịch đã gửi, chốt một đợt từ các LogRecord chưa neo rồi gửi giao dịch
-ANCH (per_submission: đợt chốt ngay vòng sau khi có bản ghi; daily: chưa làm). Giao dịch đầu tiên của ví là KEYR.
+ANCH (per_submission: đợt chốt ngay vòng sau khi có bản ghi; daily: mỗi ngày một đợt ở mốc ANCHOR_DAILY_CUTOFF, nút Neo ngay chốt sớm). Giao dịch đầu tiên của ví là KEYR.
 
 Chạy (từ thư mục backend/): ..\\venv\\Scripts\\python.exe -m app.workers.anchor_worker
 
@@ -29,19 +29,26 @@ def run_once(chain) -> int:
             logger.warning("Job neo đang dừng: %s", db.get(AnchorState, 1).halted_reason)
             return 0
         anchor_service.ensure_key_registered(db, chain)
-        batch = anchor_service.cut_batch(db)
+        if settings.anchor_mode == "daily":
+            forced = anchor_service.take_anchor_request(db)
+            if forced:
+                logger.info("Có yêu cầu Neo ngay: chốt các bản ghi đang chờ, không đợi mốc %s",
+                            settings.anchor_daily_cutoff)
+            batches = anchor_service.cut_due_batches(db, force=forced)
+        else:  # per_submission (demo): mọi bản ghi đang chờ vào đợt ngay vòng này; Neo ngay không cần làm gì thêm
+            anchor_service.take_anchor_request(db)
+            batches = [b for b in [anchor_service.cut_batch(db)] if b]
         anchor_service.send_unsent_batches(db, chain)
         anchor_service.poll_transactions(db, chain)  # mạng nhanh (hoặc chuỗi giả khi kiểm thử): có kết quả ngay
-        if not batch:
-            return 0
-        logger.info("Đợt %s: bản ghi %s..%s, root %s", batch.batch_no, batch.from_seq, batch.to_seq, batch.root)
-        return batch.to_seq - batch.from_seq + 1
+        for batch in batches:
+            logger.info("Đợt %s: bản ghi %s..%s, root %s", batch.batch_no, batch.from_seq, batch.to_seq, batch.root)
+        return sum(b.to_seq - b.from_seq + 1 for b in batches)
 
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    if settings.anchor_mode != "per_submission":
-        raise SystemExit(f"ANCHOR_MODE={settings.anchor_mode} chưa hỗ trợ.")
+    if settings.anchor_mode not in ("per_submission", "daily"):
+        raise SystemExit(f"ANCHOR_MODE={settings.anchor_mode} không hỗ trợ (per_submission | daily).")
     if not settings.private_key:
         raise SystemExit("Chưa có PRIVATE_KEY trong .env: không neo được, biên nhận sẽ ở trạng thái PENDING_ANCHOR.")
     from app.core import chain  # nạp web3, đọc SEPOLIA_RPC_URL, PRIVATE_KEY

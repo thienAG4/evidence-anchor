@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     anchor_mode: str = "per_submission"  # per_submission (demo) | daily
     anchor_interval_seconds: int = 15
     anchor_retry_seconds: int = 60  # neo lỗi thì chờ bấy nhiêu giây mới thử lại
+    # daily: mỗi ngày (giờ Việt Nam) một đợt, chốt ở mốc này; bản ghi lúc HH:MM trở đi thuộc ngày sau.
+    # Demo đặt mốc vài phút tới để xem tự khóa; nút "Neo ngay" chốt sớm các bản ghi đang chờ.
+    anchor_daily_cutoff: str = "23:59"
+    anchor_max_replacements: int = 5  # giao dịch kẹt gửi lại quá số lần này (phí x2 mỗi lần) thì dừng job neo
     # Thư ký chỉ đối chiếu biên nhận đã neo ("Đã khóa"). Máy dev chưa chạy worker neo thì đặt false để test.
     require_anchor_before_verify: bool = True
     # Giao diện chạy riêng (Live Server :5500, mở file trực tiếp = origin "null") được gọi API

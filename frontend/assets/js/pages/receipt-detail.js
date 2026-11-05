@@ -65,6 +65,41 @@
       <span class="stepper__time">${EC.escape(s.time)}</span>
     </li>`).join('');
 
+  // ---------------------------------------------------------------- Neo ngay (chỉ khi còn chờ neo)
+  if (receipt.status === 'recorded') {
+    const box = document.getElementById('receipt-anchor-now');
+    const hint = document.getElementById('receipt-anchor-hint');
+    const button = document.getElementById('receipt-anchor-button');
+    const showSchedule = (s) => {
+      if (s.halted) {
+        hint.textContent = 'Job neo đang tạm dừng để người vận hành kiểm tra. Bản ghi vẫn được giữ, sẽ neo khi chạy lại.';
+        button.disabled = true;
+      } else if (s.requestedAt) {
+        hint.textContent = 'Đã gửi yêu cầu neo ngay. Hệ thống sẽ đưa bản ghi lên blockchain trong ít giây.';
+        button.disabled = true;
+      } else if (s.mode === 'daily' && s.nextLockAt) {
+        hint.textContent = `Hệ thống tự khóa lúc ${EC.data.vnTime(s.nextLockAt)}. Bấm "Neo ngay" để khóa sớm.`;
+      } else {
+        hint.textContent = 'Hệ thống đang đưa bản ghi lên blockchain.';
+      }
+    };
+    EC.api('/anchor/schedule', { auth: false }).then((s) => { box.hidden = false; showSchedule(s); }).catch(() => {});
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try {
+        showSchedule(await EC.api('/anchor/now', { method: 'POST' }));
+        // Chờ worker neo: trạng thái chuyển sang "Đã neo, chờ chốt" thì tải lại trang
+        const timer = setInterval(async () => {
+          const detail = await EC.api(`/receipts/${encodeURIComponent(receipt.id)}`).catch(() => null);
+          if (detail && detail.view.status !== 'PENDING_ANCHOR') { clearInterval(timer); location.reload(); }
+        }, 5000);
+      } catch (err) {
+        alert(`Không gửi được yêu cầu: ${err.message}`);
+        button.disabled = false;
+      }
+    });
+  }
+
   // ---------------------------------------------------------------- Bảng mã file
   document.getElementById('receipt-files-body').innerHTML = files.map((f) => `
     <tr>

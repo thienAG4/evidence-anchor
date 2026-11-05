@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import BACKEND_DIR, settings
 from app.errors.handlers import register_error_handlers
 from app.middleware.access_log import AccessLogMiddleware
-from app.routers import admin, auth, cases, clerk, dossiers, lots, submissions, verify
+from app.routers import admin, anchoring, auth, cases, clerk, dossiers, lots, submissions, verify
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 FRONTEND_DIR = BACKEND_DIR.parent / "frontend"
@@ -24,7 +24,7 @@ app.add_middleware(AccessLogMiddleware)
 # Gọi API bằng header Authorization (không dùng cookie) nên mở CORS cho giao diện chạy riêng không gây CSRF
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"],
                    allow_headers=["Authorization", "Content-Type"])
-for module in (auth, submissions, clerk, cases, lots, dossiers, verify, admin):
+for module in (auth, submissions, clerk, cases, lots, dossiers, verify, admin, anchoring):
     app.include_router(module.router)
 
 

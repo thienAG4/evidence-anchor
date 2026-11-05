@@ -73,3 +73,5 @@ class AnchorState(Base):
     next_nonce: Mapped[int] = mapped_column(BigInteger, nullable=False)
     halted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     halted_reason: Mapped[str | None] = mapped_column(Text)
+    # Nút "Neo ngay": worker thấy giá trị này thì chốt các bản ghi đang chờ không đợi mốc ngày, rồi xóa
+    anchor_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
