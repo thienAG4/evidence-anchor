@@ -6,7 +6,7 @@
     "3_noi_chuoi": "hash_chain",
     "4_merkle_hai_tang": "merkle_two_level",
     "5_payload_anch": "chain_lines (ANCH 93 byte theo 1026_Tech, KEYR 37 byte, NOOP 13 byte)",
-    "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
+    "6_bien_nhan": "receipt_seq3 (chữ ký trên bản ghi của từng file, files[].recordSignature) và receipt_signature_eip191 (lớp chữ ký cả biên nhận JSON)",
     "mau_phai_tu_choi": "must_reject"
   },
   "record_164": {
@@ -897,7 +897,7 @@
     "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
     "note": "Khóa test công khai (Hardhat #0), không dùng thật. Chữ ký EIP-191 tất định (RFC 6979) nên cố định.",
     "case": {
-      "name": "tạm: recordHash = SHA256(biên nhận JSON), seq = số của mã biên nhận",
+      "name": "cả biên nhận: recordHash = SHA256(biên nhận JSON), seq = số của mã biên nhận",
       "keyId": 1,
       "seq": 42,
       "receipt": {

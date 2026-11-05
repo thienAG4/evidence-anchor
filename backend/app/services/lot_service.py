@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.hashing import (LOT_SCHEME, compute_lot_bundle, create_lot_bundle, hash_concat, hash_evidence,
                               hash_stream, now_vn)
 from app.core.log_record import EVENT_E
-from app.core.receipt import build_receipt, sign
+from app.core.receipt import build_receipt, record_signature, sign
 from app.db.enums import CaseStatus, CheckTarget, FileResult, MatchResult, SubmissionType
 from app.db.models import CourtCase, FileHash, IntegrityCheck, Submission, User
 from app.errors.codes import ErrorCode
@@ -79,6 +79,13 @@ def create_lot(db: Session, case: CourtCase, clerk: User, place: str | None, fil
         else:
             result = FileResult.CHANGED  # không kết luận có người sửa (F3-AC2)
         files.append({**entry, "position": i, "fileCode": f"{code}-{i}", "baseline": baseline, "result": result})
+    # Bản ghi E trước: biên nhận chứa seq, recordHash và chữ ký trên từng bản ghi (58 byte)
+    for f in files:
+        record = append_record(db, event_type=EVENT_E, file_hash=f["fileHash"], actor_id=clerk.id,
+                               ts=unix_seconds(f["hashedAt"]), result=result_code(f["result"]), case_id=case.id,
+                               ref_seq=f["baseline"].record_seq if f["baseline"] else None)  # E trỏ A
+        f.update(seq=record.seq, recordHash=record.record_hash,
+                 recordSignature=record_signature(record.seq, record.record_hash))
 
     receipt = build_receipt(
         receipt_code=code, submission_type=SubmissionType.COURT_LOT.value,
@@ -97,15 +104,12 @@ def create_lot(db: Session, case: CourtCase, clerk: User, place: str | None, fil
     db.flush()
     for f in files:
         sleep = f.get("sleepAfterSeconds")
-        record = append_record(db, event_type=EVENT_E, file_hash=f["fileHash"], actor_id=clerk.id,
-                               ts=unix_seconds(f["hashedAt"]), result=result_code(f["result"]), case_id=case.id,
-                               ref_seq=f["baseline"].record_seq if f["baseline"] else None)  # E trỏ A
         db.add(FileHash(
             submission_id=lot.id, position=f["position"], file_name=f["fileName"][:255], file_code=f["fileCode"],
             file_hash=f["fileHash"], hashed_at=f["hashedAt"], time_hash=f["timeHash"], leaf_hash=f["leafHash"],
             sleep_after_seconds=Decimal(str(sleep)) if sleep is not None else None,
             baseline_file_id=f["baseline"].id if f["baseline"] else None, result=f["result"], checked_at=checked_at,
-            record_seq=record.seq,
+            record_seq=f["seq"],
         ))
     db.commit()
     return lot

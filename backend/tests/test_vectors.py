@@ -406,3 +406,20 @@ def test_noop():
 def test_noop_must_reject(case):
     with pytest.raises(PayloadError):
         decode_noop(bytes.fromhex(case["hex"]))
+
+
+# ---------------------------------------------------------------- Chữ ký trên từng bản ghi (phần 6, code chạy thật)
+
+from app.core.signing import sign_record, verify_record_signature  # noqa: E402
+
+
+def test_sign_record_matches_vector():
+    v = VECTORS["receipt_seq3"]
+    sig = sign_record(v["privateKey"], v["keyId"], v["seq"], bytes.fromhex(v["recordHash"]))
+    assert sig == v["signature"]
+    assert verify_record_signature(v["address"], v["keyId"], v["seq"], bytes.fromhex(v["recordHash"]), sig)
+    other = bytes.fromhex(RECORDS[1]["recordHash"])
+    assert not verify_record_signature(v["address"], v["keyId"], v["seq"], other, sig)  # đổi bản ghi
+    assert not verify_record_signature(v["address"], v["keyId"], v["seq"] + 1, bytes.fromhex(v["recordHash"]), sig)
+    assert not verify_record_signature(v["address"], 2, v["seq"], bytes.fromhex(v["recordHash"]), sig)  # đổi khóa
+    assert not verify_record_signature(v["address"], v["keyId"], v["seq"], bytes.fromhex(v["recordHash"]), "0xzz")

@@ -247,6 +247,7 @@ Ghi **trước** khi phát giao dịch lên mạng, để worker chết giữa c
 | next_nonce | BIGINT | NN | Nonce kế tiếp sẽ cấp |
 | halted | BOOLEAN | NN, mặc định false | true thì job neo dừng |
 | halted_reason | TEXT | | |
+| anchor_requested_at | TIMESTAMPTZ | | Nút "Neo ngay": worker chốt đợt không đợi mốc ngày rồi xóa |
 
 Worker neo, mỗi vòng:
 
@@ -254,10 +255,13 @@ Worker neo, mỗi vòng:
    ngoài worker): dừng.
 2. Theo dõi giao dịch: lên khối thì ghi CONFIRMED hoặc FAILED. FAILED thì dừng job neo. Khối đã chốt thì ghi
    FINALIZED. Kẹt quá `ANCHOR_RETRY_SECONDS` thì gửi lại cùng payload, cùng nonce, phí gấp đôi (`replaces_tx_id`).
+   Gửi lại quá `ANCHOR_MAX_REPLACEMENTS` lần thì dừng job neo.
 3. Chưa có KEYR: gửi KEYR.
-4. Chốt đợt từ các bản ghi sau đợt trước, rồi gửi ANCH.
+4. Chốt đợt từ các bản ghi sau đợt trước, rồi gửi ANCH. `daily`: chỉ chốt ngày đã qua mốc `ANCHOR_DAILY_CUTOFF`
+   (mỗi ngày một đợt, neo bù ngày cũ), trừ khi có `anchor_requested_at`.
 
-NOOP chưa tự động: hủy một đợt kẹt là thao tác người vận hành.
+NOOP không gửi tự động: thay giao dịch ANCH kẹt bằng NOOP cùng nonce sẽ bỏ đợt đó khỏi chuỗi, làm đứt quy tắc liền
+mạch. Kẹt thì gửi lại chính ANCH với phí cao hơn; quá giới hạn thì dừng để người vận hành xử lý.
 
 ## ANCHORFINALITY (block chứa giao dịch neo đã chốt)
 

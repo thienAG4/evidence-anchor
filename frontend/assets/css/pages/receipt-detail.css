@@ -6,6 +6,20 @@
   padding-block: var(--space-6);
 }
 
+.receipt-anchor-now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  text-align: center;
+}
+
+.receipt-anchor-now .form-hint {
+  margin: 0;
+}
+
 .receipt-files .table th {
   padding-left: var(--space-4);
 }

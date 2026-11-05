@@ -109,7 +109,7 @@ không có fileCode thì `NO_BASELINE` và hash lúc nhận làm mốc.
 
 | Endpoint | Ai gọi | Request | Response | Lỗi riêng |
 |---|---|---|---|---|
-| POST /verify | PUBLIC | `receipt` (file JSON tải từ `GET /receipts/{code}`: `{receipt, signature, anchor}`), `files[]` | 200 `{valid, receiptCode, checks:[{name, ok, detail?}]}`: kiểm chữ ký hệ thống, băm lại file, tính lại Ha, Habc, Bundle, kiểm bản ghi 164 byte từng file (`SHA256(raw) = recordHash`, chứa đúng hash file), kiểm đường dẫn Merkle hai tầng từ recordHash (groupPath, batchPath) tới root đợt, payload ANCH (93 byte) chứa root, đúng fromSeq và có seq (fromSeq ≤ seq ≤ toSeq), đọc giao dịch trên Sepolia (thành công, block đã chốt, Input Data = payload, gửi từ `ANCHOR_WALLET_ADDRESS`). Chưa neo thì `valid = false` | INVALID_RECEIPT_FORMAT, CHAIN_UNAVAILABLE |
+| POST /verify | PUBLIC | `receipt` (file JSON tải từ `GET /receipts/{code}`: `{receipt, signature, anchor}`), `files[]` | 200 `{valid, receiptCode, checks:[{name, ok, detail?}]}`: kiểm chữ ký hệ thống trên cả biên nhận và trên bản ghi của từng file (58 byte: `"EVC-RECEIPT-v1"` ‖ keyId ‖ seq ‖ recordHash, `files[].recordSignature`), băm lại file, tính lại Ha, Habc, Bundle, kiểm bản ghi 164 byte từng file (`SHA256(raw) = recordHash`, chứa đúng hash file), kiểm đường dẫn Merkle hai tầng từ recordHash (groupPath, batchPath) tới root đợt, payload ANCH (93 byte) chứa root, đúng fromSeq và có seq (fromSeq ≤ seq ≤ toSeq), đọc giao dịch trên Sepolia (thành công, block đã chốt, Input Data = payload, gửi từ `ANCHOR_WALLET_ADDRESS`). Chưa neo thì `valid = false` | INVALID_RECEIPT_FORMAT, CHAIN_UNAVAILABLE |
 
 ## Quản trị (ADMIN)
 
@@ -122,15 +122,22 @@ không có fileCode thì `NO_BASELINE` và hash lúc nhận làm mốc.
 
 ## Neo lên Sepolia
 
-Chạy nền, không có API gọi. Thứ được neo là **LogRecord** (bản ghi 164 byte của mọi sự kiện A, E, C, D), theo
+Chạy nền (worker riêng). Thứ được neo là **LogRecord** (bản ghi 164 byte của mọi sự kiện A, E, C, D), theo
 **đợt** (`AnchorBatch`): các bản ghi liền nhau `from_seq..to_seq`, cây Merkle hai tầng (nhóm theo người ghi), Input
 Data của giao dịch = `payload` ANCH 93 byte. Giao dịch đầu tiên của ví là KEYR. Chi tiết: `docs/entities.md`.
 `ANCHOR_MODE` trong `.env`:
 
 - `per_submission` (demo): mỗi vòng worker (`ANCHOR_INTERVAL_SECONDS`) chốt một đợt từ mọi bản ghi chưa neo.
-- `daily` (chưa làm): cuối ngày chốt một đợt.
+- `daily`: mỗi ngày (giờ Việt Nam) một đợt, chốt ở mốc `ANCHOR_DAILY_CUTOFF` (mặc định `23:59`; bản ghi lúc đúng mốc
+  trở đi thuộc ngày sau). Ngày đã qua mốc mà chưa neo (worker tắt, mất mạng) thì neo bù, vẫn mỗi ngày một đợt.
+  Ngày không có bản ghi thì không có đợt. Demo: đặt mốc vài phút tới để xem tự khóa.
+
+| Method + path | Quyền | Input | Output |
+|---|---|---|---|
+| GET /anchor/schedule | PUBLIC | không | 200 `{mode, dailyCutoff, pendingRecords, nextLockAt, requestedAt, halted, haltedReason}` |
+| POST /anchor/now | đã đăng nhập | không | 202, như trên. Nút "Neo ngay": worker chốt các bản ghi đang chờ ở vòng kế, không đợi mốc. Bấm nhiều lần vẫn một yêu cầu |
 
 Lần nộp **Đã neo** khi bản ghi của mọi file nằm trong đợt có giao dịch ANCH đã lên khối (CONFIRMED).
 
-Giao dịch kẹt quá `ANCHOR_RETRY_SECONDS` → gửi lại cùng nonce, phí cao hơn (`ChainTx.replaces_tx_id`). Giao dịch
+Giao dịch kẹt quá `ANCHOR_RETRY_SECONDS` → gửi lại cùng nonce, phí x2 mỗi lần (`ChainTx.replaces_tx_id`); quá `ANCHOR_MAX_REPLACEMENTS` lần thì dừng job neo. Mất mạng: vòng worker lỗi, bản ghi vẫn chờ, vòng sau làm tiếp. Giao dịch
 FAILED hoặc ví bị dùng ngoài worker → `AnchorState.halted = true`, job neo dừng tới khi người vận hành xử lý.

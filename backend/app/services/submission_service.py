@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.hashing import BUNDLE_SCHEME, create_bundle, hash_evidence, hash_stream, now_vn
 from app.core.log_record import EVENT_A
-from app.core.receipt import build_receipt, sign
+from app.core.receipt import build_receipt, record_signature, sign
 from app.db.enums import SubmissionType
 from app.db.models import FileHash, Submission, User
 from app.errors.codes import ErrorCode
@@ -28,6 +28,12 @@ def create_self_submission(db: Session, owner: User, items: list[tuple[str, Bina
     bundle = create_bundle(entries)
     code = next_receipt_code(db)
     files = [{**e, "position": i, "fileCode": f"{code}-{i}"} for i, e in enumerate(entries, 1)]
+    # Bản ghi A trước: biên nhận chứa seq, recordHash và chữ ký trên từng bản ghi (58 byte)
+    for f in files:
+        record = append_record(db, event_type=EVENT_A, file_hash=f["fileHash"], actor_id=owner.id,
+                               ts=unix_seconds(f["hashedAt"]))
+        f.update(seq=record.seq, recordHash=record.record_hash,
+                 recordSignature=record_signature(record.seq, record.record_hash))
 
     receipt = build_receipt(
         receipt_code=code, submission_type=SubmissionType.SELF.value,
@@ -44,13 +50,11 @@ def create_self_submission(db: Session, owner: User, items: list[tuple[str, Bina
     db.flush()
     for f in files:
         sleep = f.get("sleepAfterSeconds")
-        record = append_record(db, event_type=EVENT_A, file_hash=f["fileHash"], actor_id=owner.id,
-                               ts=unix_seconds(f["hashedAt"]))
         db.add(FileHash(
             submission_id=submission.id, position=f["position"], file_name=f["fileName"][:255],
             file_code=f["fileCode"], file_hash=f["fileHash"], hashed_at=f["hashedAt"],
             time_hash=f["timeHash"], leaf_hash=f["leafHash"],
-            sleep_after_seconds=Decimal(str(sleep)) if sleep is not None else None, record_seq=record.seq,
+            sleep_after_seconds=Decimal(str(sleep)) if sleep is not None else None, record_seq=f["seq"],
         ))
     db.commit()
     return submission

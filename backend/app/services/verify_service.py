@@ -46,6 +46,11 @@ def verify(document: dict, streams: list[BinaryIO]) -> dict:
 
     signer = settings.receipt_signer_address or receipt_signing.signing_address()
     check("Chữ ký hệ thống trên biên nhận", receipt_signing.verify(receipt, signature, signer))
+    key_no = receipt.get("signer", {}).get("keyNo") if isinstance(receipt.get("signer"), dict) else None
+    unsigned = [f.get("fileCode", "?") for f in receipt_files
+                if not isinstance(key_no, int) or not receipt_signing.verify_file_record(f, key_no, signer)]
+    check("Chữ ký hệ thống trên bản ghi của từng file (58 byte)", not unsigned,
+          f"sai hoặc thiếu: {', '.join(unsigned)}" if unsigned else None)
 
     actual = Counter(hash_stream(s) for s in streams)
     missing = [f["fileName"] for f in receipt_files if (expected - actual)[f["fileHash"]] > 0]
@@ -80,8 +85,9 @@ def _check_records(check, receipt: dict, anchor: dict) -> None:
                 decoded = lr.decode(raw)
             except ValueError:  # RecordError: sai độ dài, nhãn, loại, kết quả
                 decoded = None
+            signed_mismatch = "recordHash" in f and (f["recordHash"] != r["recordHash"] or f.get("seq") != r["seq"])
             if not decoded or lr.record_hash(raw) != r["recordHash"] or decoded["fileHash"] != f["fileHash"] \
-                    or decoded["eventType"] != expected_event or decoded["seq"] != r["seq"]:
+                    or decoded["eventType"] != expected_event or decoded["seq"] != r["seq"] or signed_mismatch:
                 bad_records.append(f["fileCode"])
                 continue
             if not verify_record_proof(bytes.fromhex(r["recordHash"]), r["groupPath"], r["batchPath"], r["root"]):

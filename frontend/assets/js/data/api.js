@@ -199,6 +199,8 @@
     });
 
   EC.data = {
+    vnTime: vnText,
+
     receipts,
     litigants,
 

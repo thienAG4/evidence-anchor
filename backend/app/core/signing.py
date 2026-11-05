@@ -49,6 +49,23 @@ def sign_receipt(private_key_hex: str, key_no: int, seq: int, receipt: dict) -> 
     return "0x" + signed.signature.hex().removeprefix("0x")
 
 
+def sign_record(private_key_hex: str, key_id: int, seq: int, record_hash: bytes) -> str:
+    """Chữ ký trên bản ghi 164 byte (đích của đặc tả): EIP-191 trên 58 byte với recordHash thật của bản ghi."""
+    signed = Account.sign_message(encode_defunct(primitive=build_signed_message(key_id, seq, record_hash)),
+                                  private_key=private_key_hex)
+    return "0x" + signed.signature.hex().removeprefix("0x")
+
+
+def verify_record_signature(expected_address: str, key_id: int, seq: int, record_hash: bytes,
+                            signature_hex: str) -> bool:
+    try:
+        recovered = Account.recover_message(encode_defunct(primitive=build_signed_message(key_id, seq, record_hash)),
+                                            signature=bytes.fromhex(signature_hex.removeprefix("0x")))
+    except (ValueError, TypeError, AttributeError, OverflowError, IndexError, BadSignature):
+        return False
+    return recovered.lower() == expected_address.lower()
+
+
 def verify_signature(expected_address: str, key_no: int, seq: int, receipt: dict, signature_hex: str) -> bool:
     """Địa chỉ khôi phục từ chữ ký phải đúng địa chỉ khóa ký đã công bố.
 

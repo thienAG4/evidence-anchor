@@ -6,7 +6,7 @@ Trạng thái neo của một lần nộp suy ra từ bản ghi A/E của các f
 import logging
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -148,10 +148,11 @@ def ensure_key_registered(db: Session, chain) -> None:
     _send(db, chain, kind=ChainTxKind.KEYR, nonce=nonce, payload=payload)
 
 
-def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
+def cut_batch(db: Session, limit: int = 500, stop_ts: int | None = None) -> AnchorBatch | None:
     """Chốt đợt mới từ các bản ghi sau đợt trước (liền nhau), cấp nonce trong cùng thao tác database.
 
-    Payload ANCH (93 byte) ghi khoảng from_seq..to_seq; from_seq = to_seq đợt trước + 1."""
+    Payload ANCH (93 byte) ghi khoảng from_seq..to_seq; from_seq = to_seq đợt trước + 1.
+    stop_ts (chế độ daily): dừng ở bản ghi đầu tiên có ts >= stop_ts, để đợt không vắt sang ngày sau."""
     state = _locked_state(db)
     if state.halted:
         db.rollback()
@@ -159,6 +160,9 @@ def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
     last = db.scalar(select(AnchorBatch).order_by(AnchorBatch.batch_no.desc()).limit(1))
     from_seq = (last.to_seq if last else 0) + 1
     records = list(db.scalars(select(LogRecord).where(LogRecord.seq >= from_seq).order_by(LogRecord.seq).limit(limit)))
+    if stop_ts is not None and records:
+        cut = next((i for i, r in enumerate(records) if i and r.ts >= stop_ts), len(records))
+        records = records[:cut]  # bản ghi đầu luôn vào đợt, kể cả khi giờ của nó lệch (seq mới là thứ tự)
     if not records:
         db.rollback()
         return None
@@ -180,6 +184,72 @@ def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
                               group_path=path["groupPath"], batch_path=path["batchPath"]))
     db.commit()
     return batch
+
+
+VN_TZ = timezone(timedelta(hours=7))
+
+
+def day_end(ts: int, cutoff: str | None = None) -> int:
+    """Mốc chốt (giây Unix) của ngày chứa ts, giờ Việt Nam. Bản ghi lúc đúng mốc trở đi thuộc ngày sau."""
+    hour, minute = (int(x) for x in (cutoff or settings.anchor_daily_cutoff).split(":"))
+    local = datetime.fromtimestamp(ts, VN_TZ)
+    end = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if local >= end:
+        end += timedelta(days=1)
+    return int(end.timestamp())
+
+
+def _first_pending(db: Session) -> LogRecord | None:
+    last = db.scalar(select(AnchorBatch.to_seq).order_by(AnchorBatch.batch_no.desc()).limit(1))
+    return db.scalar(select(LogRecord).where(LogRecord.seq > (last or 0)).order_by(LogRecord.seq).limit(1))
+
+
+def cut_due_batches(db: Session, now: datetime | None = None, force: bool = False) -> list[AnchorBatch]:
+    """Chế độ daily: mỗi ngày một đợt. Ngày đã qua mốc mà chưa neo (worker tắt, mất mạng) thì neo bù, vẫn
+    mỗi ngày một đợt riêng (UI-13, UI-14). force (nút Neo ngay): chốt luôn cả ngày hôm nay, không đợi mốc.
+    Ngày không có bản ghi thì không có đợt (UI-38)."""
+    now_ts = int((now or _now()).timestamp())
+    batches = []
+    while (first := _first_pending(db)) is not None:
+        end = day_end(first.ts)
+        if not force and now_ts < end:
+            break
+        batch = cut_batch(db, stop_ts=end)
+        if batch is None:  # job neo đang dừng
+            break
+        batches.append(batch)
+    return batches
+
+
+def request_anchor_now(db: Session) -> AnchorState:
+    """Nút "Neo ngay": ghi yêu cầu, worker (tiến trình riêng, nơi duy nhất gửi giao dịch) xử lý ở vòng kế."""
+    state = _locked_state(db)
+    if state.anchor_requested_at is None:
+        state.anchor_requested_at = _now()
+    db.commit()
+    return state
+
+
+def take_anchor_request(db: Session) -> bool:
+    state = _locked_state(db)
+    requested = state.anchor_requested_at is not None
+    state.anchor_requested_at = None
+    db.commit()
+    return requested
+
+
+def schedule(db: Session) -> dict:
+    """Cho giao diện: chế độ neo, mốc chốt kế tiếp của bản ghi đang chờ, có yêu cầu Neo ngay chưa."""
+    state = db.get(AnchorState, 1)
+    first = _first_pending(db)
+    pending = db.scalar(select(func.count()).select_from(LogRecord).where(LogRecord.seq >= first.seq)) if first else 0
+    next_lock = None
+    if first is not None:
+        next_lock = (datetime.fromtimestamp(day_end(first.ts), VN_TZ).isoformat()
+                     if settings.anchor_mode == "daily" else None)
+    return {"mode": settings.anchor_mode, "dailyCutoff": settings.anchor_daily_cutoff, "pendingRecords": pending,
+            "nextLockAt": next_lock, "requestedAt": state.anchor_requested_at.isoformat()
+            if state.anchor_requested_at else None, "halted": state.halted, "haltedReason": state.halted_reason}
 
 
 def send_unsent_batches(db: Session, chain) -> None:
@@ -237,6 +307,10 @@ def poll_transactions(db: Session, chain) -> None:
             depth, cur = 1, tx
             while cur.replaces_tx_id:
                 depth, cur = depth + 1, db.get(ChainTx, cur.replaces_tx_id)
+            if depth > settings.anchor_max_replacements:
+                _halt(db, f"Giao dịch {tx.kind.value} nonce {tx.nonce} kẹt sau {depth - 1} lần gửi lại "
+                          f"(phí đã x{2 ** (depth - 1)}): người vận hành kiểm tra mạng, ví rồi bỏ cờ dừng.")
+                return
             new = _send(db, chain, kind=tx.kind, nonce=tx.nonce, payload=tx.payload, batch_id=tx.batch_id,
                         replaces=tx, bump=depth)
             logger.warning("Giao dịch %s kẹt, gửi lại %s (nonce %s)", tx.tx_hash, new.tx_hash, tx.nonce)
