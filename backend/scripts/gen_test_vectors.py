@@ -21,6 +21,7 @@ from app.core.hashing import (BUNDLE_SCHEME, LOT_SCHEME, CHUNK_SIZE, compute_bun
 import uuid
 
 from app.core.merkle import build_tree, build_two_level, record_leaf
+from app.core.payload import Anch
 from app.core.record import ZERO32, EventType, Record, Result, ref32
 from app.core.signing import build_signed_message, canonical_json, sign_receipt, signed_message, signer_address
 from eth_account import Account
@@ -237,6 +238,29 @@ def record_vectors() -> dict:
     }
 
 
+def anch_vectors() -> dict:
+    tree_root = bytes.fromhex(build_two_level([(r.seq, r.actor_ref.hex(), r.record_hash())
+                                               for r in demo_records()[:3]])["root"])
+    first = Anch(1, 3, bytes(32), tree_root)
+    second = Anch(2, 2, tree_root, bytes.fromhex(sha256_hex(b"root-dot-2")))
+    good = first.encode()
+    view = lambda a: {"input": {"batchNo": a.batch_no, "recordCount": a.record_count,
+                                "prevRoot": a.prev_root.hex(), "root": a.root.hex()},
+                      "hex": a.encode().hex(), "length": len(a.encode())}
+    return {"anch_payload": {
+        "layout": "\"ANCH\" 4 | version u8 1 (=1) | batchNo u64 8 | recordCount u64 8 | prevRoot 32 | root 32 "
+                  "= 85 byte; big-endian; đợt 1 có prevRoot toàn 0",
+        "source": "Nội dung theo 1027_Tech; độ dài trường theo quy ước 1026_Tech",
+        "cases": [view(first), view(second)],
+        "must_reject": [
+            {"name": "ANCH 84 byte", "hex": good[:84].hex()},
+            {"name": "nhãn sai ANCX", "hex": (b"ANCX" + good[4:]).hex()},
+            {"name": "phiên bản 2", "hex": (good[:4] + bytes([2]) + good[5:]).hex()},
+            {"name": "đợt 1 có prevRoot khác 0", "hex": (good[:21] + b"" * 32 + good[53:]).hex()},
+            {"name": "số bản ghi 0", "hex": (good[:13] + bytes(8) + good[21:]).hex()},
+        ],
+    }}
+
 def _flip_last_byte_of_file_hash(record: Record) -> str:
     raw = bytearray(record.encode())
     raw[18 + 32] ^= 0x01  # byte cuối của fileHash (label 10 + seq 8 + type 1 = 19; fileHash 19..50)
@@ -249,12 +273,12 @@ def build() -> dict:
         "parts": {
             "1_che_ma": "Bỏ: 1027_Tech dùng UserID và mã vụ án nội bộ, không salt/HMAC (xem record_164.refs).",
             "2_ban_ghi_164": "record_164", "3_noi_chuoi": "hash_chain", "4_merkle_hai_tang": "merkle_two_level",
-            "5_payload_anch": "Chưa có: 1027_Tech và 1026_Tech khác nhau về nội dung ANCH, Thẻ 22 ghi 92 byte còn "
-                              "1026_Tech ghi 93 byte. Chờ nhóm chốt.",
+            "5_payload_anch": "anch_payload (theo 1027_Tech: số đợt, số bản ghi, root đợt trước, root; 85 byte)",
             "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
             "mau_phai_tu_choi": "must_reject",
         },
         **record_vectors(),
+        **anch_vectors(),
         "conventions": {
             "hash": "SHA-256, viết hex chữ thường 64 ký tự",
             "concat": "‖ = nối 32 byte NHỊ PHÂN của từng hash (không nối chuỗi hex)",
