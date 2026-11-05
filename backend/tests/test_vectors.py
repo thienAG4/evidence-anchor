@@ -23,6 +23,7 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from app.core.hashing import compute_bundle, compute_lot_bundle, hash_stream, leaf_hash  # noqa: E402
 from app.core.merkle import build_tree, build_two_level, verify_proof, verify_record_proof  # noqa: E402
+from app.core.payload import Anch, PayloadError, decode_anch  # noqa: E402
 from app.core.record import EventType, Record, RecordError, Result, decode, verify_chain  # noqa: E402
 from app.core.signing import build_signed_message, sign_receipt, signed_message, verify_signature  # noqa: E402
 
@@ -336,3 +337,30 @@ def test_receipt_seq3_paths():
     assert verify_record_proof(bytes.fromhex(REC3["recordHash"]), REC3["groupPath"], REC3["batchPath"], REC3["root"])
     assert not verify_record_proof(bytes.fromhex(RECORDS[1]["recordHash"]), REC3["groupPath"], REC3["batchPath"],
                                    REC3["root"])
+
+
+# ---------------------------------------------------------------- Payload ANCH (phần 5)
+
+ANCH_V = VECTORS["anch_payload"]
+
+
+@pytest.mark.parametrize("case", ANCH_V["cases"], ids=lambda c: f"dot{c['input']['batchNo']}")
+def test_anch_payload(case):
+    i = case["input"]
+    raw = (b"ANCH" + bytes([1]) + i["batchNo"].to_bytes(8, "big") + i["recordCount"].to_bytes(8, "big")
+           + bytes.fromhex(i["prevRoot"]) + bytes.fromhex(i["root"]))
+    assert raw.hex() == case["hex"] and len(raw) == case["length"] == 85
+    anch = Anch(i["batchNo"], i["recordCount"], bytes.fromhex(i["prevRoot"]), bytes.fromhex(i["root"]))
+    assert anch.encode() == raw and decode_anch(raw) == anch
+
+
+def test_anch_chain_and_root():
+    first, second = ANCH_V["cases"]
+    assert first["input"]["prevRoot"] == "00" * 32
+    assert second["input"]["prevRoot"] == first["input"]["root"] == TWO["root"]
+
+
+@pytest.mark.parametrize("case", ANCH_V["must_reject"], ids=lambda c: c["name"])
+def test_anch_must_reject(case):
+    with pytest.raises(PayloadError):
+        decode_anch(bytes.fromhex(case["hex"]))

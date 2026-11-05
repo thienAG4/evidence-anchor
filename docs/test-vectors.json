@@ -5,7 +5,7 @@
     "2_ban_ghi_164": "record_164",
     "3_noi_chuoi": "hash_chain",
     "4_merkle_hai_tang": "merkle_two_level",
-    "5_payload_anch": "Chưa có: 1027_Tech và 1026_Tech khác nhau về nội dung ANCH, Thẻ 22 ghi 92 byte còn 1026_Tech ghi 93 byte. Chờ nhóm chốt.",
+    "5_payload_anch": "anch_payload (theo 1027_Tech: số đợt, số bản ghi, root đợt trước, root; 85 byte)",
     "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
     "mau_phai_tu_choi": "must_reject"
   },
@@ -247,6 +247,54 @@
       "reason": "loại A không có vụ án"
     }
   ],
+  "anch_payload": {
+    "layout": "\"ANCH\" 4 | version u8 1 (=1) | batchNo u64 8 | recordCount u64 8 | prevRoot 32 | root 32 = 85 byte; big-endian; đợt 1 có prevRoot toàn 0",
+    "source": "Nội dung theo 1027_Tech; độ dài trường theo quy ước 1026_Tech",
+    "cases": [
+      {
+        "input": {
+          "batchNo": 1,
+          "recordCount": 3,
+          "prevRoot": "0000000000000000000000000000000000000000000000000000000000000000",
+          "root": "c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089"
+        },
+        "hex": "414e434801000000000000000100000000000000030000000000000000000000000000000000000000000000000000000000000000c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089",
+        "length": 85
+      },
+      {
+        "input": {
+          "batchNo": 2,
+          "recordCount": 2,
+          "prevRoot": "c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089",
+          "root": "eb5c17edeb46e54f6a52371bed3d330fe0beb618930d38e90b477e15ee37ae43"
+        },
+        "hex": "414e43480100000000000000020000000000000002c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089eb5c17edeb46e54f6a52371bed3d330fe0beb618930d38e90b477e15ee37ae43",
+        "length": 85
+      }
+    ],
+    "must_reject": [
+      {
+        "name": "ANCH 84 byte",
+        "hex": "414e434801000000000000000100000000000000030000000000000000000000000000000000000000000000000000000000000000c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a7900"
+      },
+      {
+        "name": "nhãn sai ANCX",
+        "hex": "414e435801000000000000000100000000000000030000000000000000000000000000000000000000000000000000000000000000c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089"
+      },
+      {
+        "name": "phiên bản 2",
+        "hex": "414e434802000000000000000100000000000000030000000000000000000000000000000000000000000000000000000000000000c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089"
+      },
+      {
+        "name": "đợt 1 có prevRoot khác 0",
+        "hex": "414e434801000000000000000100000000000000030101010101010101010101010101010101010101010101010101010101010101c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089"
+      },
+      {
+        "name": "số bản ghi 0",
+        "hex": "414e434801000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089"
+      }
+    ]
+  },
   "conventions": {
     "hash": "SHA-256, viết hex chữ thường 64 ký tự",
     "concat": "‖ = nối 32 byte NHỊ PHÂN của từng hash (không nối chuỗi hex)",
