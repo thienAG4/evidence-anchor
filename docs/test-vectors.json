@@ -1,0 +1,774 @@
+{
+  "version": "evidencechain-test-vectors-v2",
+  "parts": {
+    "1_che_ma": "Bỏ: 1027_Tech dùng UserID và mã vụ án nội bộ, không salt/HMAC (xem record_164.refs).",
+    "2_ban_ghi_164": "record_164",
+    "3_noi_chuoi": "hash_chain",
+    "4_merkle_hai_tang": "merkle_two_level",
+    "5_payload_anch": "Chưa có: 1027_Tech và 1026_Tech khác nhau về nội dung ANCH, Thẻ 22 ghi 92 byte còn 1026_Tech ghi 93 byte. Chờ nhóm chốt.",
+    "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
+    "mau_phai_tu_choi": "must_reject"
+  },
+  "record_164": {
+    "layout": "label \"EVC-REC-v1\" 10 | seq u64 8 | type u8 1 (A=1,E=2,C=3,D=4) | fileHash 32 | caseRef 32 | actorRef 32 | ts u64 8 (giây Unix) | result u8 1 (0 không áp dụng, 1 MATCH, 2 MISMATCH, 3 NO_A) | refSeq u64 8 | prevRecordHash 32; big-endian; tổng 164",
+    "refs": "caseRef/actorRef = UUID 16 byte + 16 byte 0 (1027_Tech: UserID, mã vụ án nội bộ, không salt); loại A: caseRef toàn 0",
+    "recordHash": "SHA256(164 byte)",
+    "actors": {
+      "Minh": "11111111-1111-4111-8111-111111111111",
+      "Lan": "22222222-2222-4222-8222-222222222222",
+      "thư ký": "33333333-3333-4333-8333-333333333333",
+      "vụ án": "44444444-4444-4444-8444-444444444444"
+    },
+    "cases": [
+      {
+        "fields": {
+          "seq": 1,
+          "type": "A",
+          "typeByte": 1,
+          "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+          "caseRef": "0000000000000000000000000000000000000000000000000000000000000000",
+          "actorRef": "1111111111114111811111111111111100000000000000000000000000000000",
+          "ts": 1793800000,
+          "result": 0,
+          "refSeq": 0,
+          "prevRecordHash": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "hex": "4556432d5245432d7631000000000000000101e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6400000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37400000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        "length": 164,
+        "recordHash": "99a55afd421335b1233048cc4fca50502111611d739e8d954ed3c9fa5b7062a9"
+      },
+      {
+        "fields": {
+          "seq": 2,
+          "type": "A",
+          "typeByte": 1,
+          "fileHash": "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac",
+          "caseRef": "0000000000000000000000000000000000000000000000000000000000000000",
+          "actorRef": "2222222222224222822222222222222200000000000000000000000000000000",
+          "ts": 1793800060,
+          "result": 0,
+          "refSeq": 0,
+          "prevRecordHash": "99a55afd421335b1233048cc4fca50502111611d739e8d954ed3c9fa5b7062a9"
+        },
+        "hex": "4556432d5245432d763100000000000000020125273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac00000000000000000000000000000000000000000000000000000000000000002222222222224222822222222222222200000000000000000000000000000000000000006aeb377c00000000000000000099a55afd421335b1233048cc4fca50502111611d739e8d954ed3c9fa5b7062a9",
+        "length": 164,
+        "recordHash": "8be1f41e792d8165808c7f889f8772852a933977e325f4a575aeb2fcaec4feef"
+      },
+      {
+        "fields": {
+          "seq": 3,
+          "type": "A",
+          "typeByte": 1,
+          "fileHash": "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a",
+          "caseRef": "0000000000000000000000000000000000000000000000000000000000000000",
+          "actorRef": "1111111111114111811111111111111100000000000000000000000000000000",
+          "ts": 1793800120,
+          "result": 0,
+          "refSeq": 0,
+          "prevRecordHash": "8be1f41e792d8165808c7f889f8772852a933977e325f4a575aeb2fcaec4feef"
+        },
+        "hex": "4556432d5245432d7631000000000000000301ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a00000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37b80000000000000000008be1f41e792d8165808c7f889f8772852a933977e325f4a575aeb2fcaec4feef",
+        "length": 164,
+        "recordHash": "8a69a1dcf7b31b78f9353ce59450ee72d7b5b15566b5499f5031d1eebf4b1f3e"
+      },
+      {
+        "fields": {
+          "seq": 4,
+          "type": "E",
+          "typeByte": 2,
+          "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+          "caseRef": "4444444444444444844444444444444400000000000000000000000000000000",
+          "actorRef": "3333333333334333833333333333333300000000000000000000000000000000",
+          "ts": 1793886400,
+          "result": 1,
+          "refSeq": 1,
+          "prevRecordHash": "8a69a1dcf7b31b78f9353ce59450ee72d7b5b15566b5499f5031d1eebf4b1f3e"
+        },
+        "hex": "4556432d5245432d7631000000000000000402e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6444444444444444448444444444444444000000000000000000000000000000003333333333334333833333333333333300000000000000000000000000000000000000006aec88c00100000000000000018a69a1dcf7b31b78f9353ce59450ee72d7b5b15566b5499f5031d1eebf4b1f3e",
+        "length": 164,
+        "recordHash": "e4e3cf2d82b5b4d57d9e512065d869fece8dfb447faabdc3150455b4685f94cb"
+      },
+      {
+        "fields": {
+          "seq": 5,
+          "type": "C",
+          "typeByte": 3,
+          "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+          "caseRef": "4444444444444444844444444444444400000000000000000000000000000000",
+          "actorRef": "3333333333334333833333333333333300000000000000000000000000000000",
+          "ts": 1793972800,
+          "result": 1,
+          "refSeq": 4,
+          "prevRecordHash": "e4e3cf2d82b5b4d57d9e512065d869fece8dfb447faabdc3150455b4685f94cb"
+        },
+        "hex": "4556432d5245432d7631000000000000000503e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6444444444444444448444444444444444000000000000000000000000000000003333333333334333833333333333333300000000000000000000000000000000000000006aedda40010000000000000004e4e3cf2d82b5b4d57d9e512065d869fece8dfb447faabdc3150455b4685f94cb",
+        "length": 164,
+        "recordHash": "ebc85930294462d387d8849d3b4b2d0d3666569627e21541161887ecd74d3141"
+      }
+    ]
+  },
+  "hash_chain": {
+    "rule": "seq tăng liên tục từ 1; prevRecordHash(seq n) = recordHash(seq n-1); seq 1 có prevRecordHash toàn 0",
+    "recordHashes": [
+      "99a55afd421335b1233048cc4fca50502111611d739e8d954ed3c9fa5b7062a9",
+      "8be1f41e792d8165808c7f889f8772852a933977e325f4a575aeb2fcaec4feef",
+      "8a69a1dcf7b31b78f9353ce59450ee72d7b5b15566b5499f5031d1eebf4b1f3e",
+      "e4e3cf2d82b5b4d57d9e512065d869fece8dfb447faabdc3150455b4685f94cb",
+      "ebc85930294462d387d8849d3b4b2d0d3666569627e21541161887ecd74d3141"
+    ],
+    "tamperedSeq2Hex": "4556432d5245432d763100000000000000020125273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607ead00000000000000000000000000000000000000000000000000000000000000002222222222224222822222222222222200000000000000000000000000000000000000006aeb377c00000000000000000099a55afd421335b1233048cc4fca50502111611d739e8d954ed3c9fa5b7062a9",
+    "tamperedFirstBadSeq": 3
+  },
+  "merkle_two_level": {
+    "formula": "lá = SHA256(0x00 ‖ recordHash); trong mỗi nhóm (cùng actorRef) dựng cây RFC 6962 ra subRoot; nhóm xếp theo seq nhỏ nhất; tầng trên dựng cây RFC 6962 trên các subRoot (đưa thẳng vào như nút, không thêm 0x00) ra root. Nút trong = SHA256(0x01 ‖ trái ‖ phải).",
+    "assumption": "Cách đưa subRoot vào tầng trên (không thêm 0x00) cần nhóm xác nhận.",
+    "batchSeqs": [
+      1,
+      2,
+      3
+    ],
+    "groups": [
+      {
+        "actorRef": "1111111111114111811111111111111100000000000000000000000000000000",
+        "seqs": [
+          1,
+          3
+        ],
+        "leaves": [
+          "e174250be8c872a3e1ec4aeb2f9eb104fd24b7ffe00151715a90c2a34451a35b",
+          "b51213a98f1997dd823ef8c9d5b1bd59df215f550e4ebf4205698e19747783e8"
+        ],
+        "subRoot": "40e96c3b4b81576dce1e5982d94a9b05f48f40186241ac9d922fcae943fa304c"
+      },
+      {
+        "actorRef": "2222222222224222822222222222222200000000000000000000000000000000",
+        "seqs": [
+          2
+        ],
+        "leaves": [
+          "fada3cb61ea4596283594a8a5fde725f37b7f35400e125dfc3b385d7face5890"
+        ],
+        "subRoot": "fada3cb61ea4596283594a8a5fde725f37b7f35400e125dfc3b385d7face5890"
+      }
+    ],
+    "root": "c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089",
+    "paths": {
+      "1": {
+        "groupPath": [
+          {
+            "side": "R",
+            "hash": "b51213a98f1997dd823ef8c9d5b1bd59df215f550e4ebf4205698e19747783e8"
+          }
+        ],
+        "batchPath": [
+          {
+            "side": "R",
+            "hash": "fada3cb61ea4596283594a8a5fde725f37b7f35400e125dfc3b385d7face5890"
+          }
+        ]
+      },
+      "3": {
+        "groupPath": [
+          {
+            "side": "L",
+            "hash": "e174250be8c872a3e1ec4aeb2f9eb104fd24b7ffe00151715a90c2a34451a35b"
+          }
+        ],
+        "batchPath": [
+          {
+            "side": "R",
+            "hash": "fada3cb61ea4596283594a8a5fde725f37b7f35400e125dfc3b385d7face5890"
+          }
+        ]
+      },
+      "2": {
+        "groupPath": [],
+        "batchPath": [
+          {
+            "side": "L",
+            "hash": "40e96c3b4b81576dce1e5982d94a9b05f48f40186241ac9d922fcae943fa304c"
+          }
+        ]
+      }
+    }
+  },
+  "receipt_seq3": {
+    "formula": "signedMessage (58) = \"EVC-RECEIPT-v1\" 14 ‖ keyId u32 4 ‖ seq u64 8 ‖ recordHash 32; chữ ký EIP-191 personal_sign trên 58 byte",
+    "privateKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "keyId": 1,
+    "seq": 3,
+    "recordHash": "8a69a1dcf7b31b78f9353ce59450ee72d7b5b15566b5499f5031d1eebf4b1f3e",
+    "signedMessage": "4556432d524543454950542d76310000000100000000000000038a69a1dcf7b31b78f9353ce59450ee72d7b5b15566b5499f5031d1eebf4b1f3e",
+    "signature": "0x125af63f63cdf2a7c1f204bc87802e39105793f3aca2ed1eb7d3b8dba9e1e3a01c80e9c310a7a16b8538678bbb2b348e3b0a4df9d05611d4a96db57d99ffc65d1c",
+    "groupPath": [
+      {
+        "side": "L",
+        "hash": "e174250be8c872a3e1ec4aeb2f9eb104fd24b7ffe00151715a90c2a34451a35b"
+      }
+    ],
+    "batchPath": [
+      {
+        "side": "R",
+        "hash": "fada3cb61ea4596283594a8a5fde725f37b7f35400e125dfc3b385d7face5890"
+      }
+    ],
+    "root": "c075521e7b9dd3bd153be4c5c7bef546c1add9a9f40012b2e440344c8a790089"
+  },
+  "must_reject": [
+    {
+      "name": "bản ghi 163 byte",
+      "hex": "4556432d5245432d7631000000000000000101e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6400000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb374000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "reason": "sai độ dài"
+    },
+    {
+      "name": "nhãn sai EVC-REX-v1",
+      "hex": "4556432d5245582d7631000000000000000101e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6400000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37400000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "reason": "sai nhãn"
+    },
+    {
+      "name": "loại sự kiện 9",
+      "hex": "4556432d5245432d7631000000000000000109e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6400000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37400000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "reason": "type ngoài 1-4"
+    },
+    {
+      "name": "kết quả 7",
+      "hex": "4556432d5245432d7631000000000000000101e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6400000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37400700000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "reason": "result ngoài 0-3"
+    },
+    {
+      "name": "seq 1 có prevRecordHash khác 0",
+      "hex": "4556432d5245432d7631000000000000000101e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6400000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37400000000000000000000101010101010101010101010101010101010101010101010101010101010101",
+      "reason": "bản ghi đầu tiên phải có prevRecordHash toàn 0"
+    },
+    {
+      "name": "bản ghi A có caseRef khác 0",
+      "hex": "4556432d5245432d7631000000000000000101e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff6401000000000000000000000000000000000000000000000000000000000000001111111111114111811111111111111100000000000000000000000000000000000000006aeb37400000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "reason": "loại A không có vụ án"
+    }
+  ],
+  "conventions": {
+    "hash": "SHA-256, viết hex chữ thường 64 ký tự",
+    "concat": "‖ = nối 32 byte NHỊ PHÂN của từng hash (không nối chuỗi hex)",
+    "text": "chuỗi (giờ, nơi nộp) băm dạng UTF-8 nguyên văn",
+    "fileHashReadChunk": "đọc file theo khúc 1048576 byte; kết quả phải bằng băm cả file một lần"
+  },
+  "sha256_file": [
+    {
+      "name": "file rỗng",
+      "input": {
+        "kind": "utf8",
+        "value": ""
+      },
+      "length": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "chuỗi abc (vector chuẩn NIST)",
+      "input": {
+        "kind": "utf8",
+        "value": "abc"
+      },
+      "length": 3,
+      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "tiếng Việt UTF-8",
+      "input": {
+        "kind": "utf8",
+        "value": "Hợp đồng vay tiền"
+      },
+      "length": 24,
+      "sha256": "c3a801ebfa65b18abf62fff06ed62ae74434bc3c5387666025590f1482d8f011"
+    },
+    {
+      "name": "đúng 1 khúc đọc (1 MB, byte 0x61)",
+      "input": {
+        "kind": "repeat",
+        "byte": 97,
+        "length": 1048576
+      },
+      "length": 1048576,
+      "sha256": "9bc1b2a288b26af7257a36277ae3816a7d4f16e89c1e7e77d0a5c48bad62b360"
+    },
+    {
+      "name": "1 khúc + 1 byte (1 MB + 1)",
+      "input": {
+        "kind": "repeat",
+        "byte": 97,
+        "length": 1048577
+      },
+      "length": 1048577,
+      "sha256": "4a3f0c0c213adea174f9a3d4c13177315b588bdb2e9c1012d3d0bf0453ca0f6a"
+    }
+  ],
+  "file_leaf": {
+    "formula": "timeHash = SHA256(hashedAt); leafHash = SHA256(fileHash ‖ timeHash)",
+    "cases": [
+      {
+        "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+        "hashedAt": "2026-11-04T21:05:35.16+07:00",
+        "timeHash": "98685ce26142d6dc08e4d7020426bbfd4724ebbc76ff0538e6f5efc9ff02d392",
+        "leafHash": "676d8dd73ed3a611a991f5dd9e449fbbaf2245c793cec67d1b1a3e859878fbca"
+      },
+      {
+        "fileHash": "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac",
+        "hashedAt": "2026-11-04T21:05:37.42+07:00",
+        "timeHash": "31df7bdcf562cfdaddf45d81826bedc15f4c8639f40af6223bf52afe647d38ff",
+        "leafHash": "830e78c549e7cce82d88d0b38b2fa8e45490da01de755583ab8f39963e011166"
+      }
+    ]
+  },
+  "bundle_per_file_time_v2": {
+    "scheme": "per-file-time-v2",
+    "formula": "lá sắp theo (fileHash, leafHash) giảm dần; habc = SHA256(leaf_1 ‖ … ‖ leaf_n); bundleHash = SHA256(habc ‖ SHA256(bundledAt))",
+    "cases": [
+      {
+        "name": "1 file",
+        "files": [
+          {
+            "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "hashedAt": "2026-11-04T21:05:35.16+07:00"
+          }
+        ],
+        "bundledAt": "2026-11-04T21:05:35.16+07:00",
+        "expected": {
+          "order": [
+            "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64"
+          ],
+          "habc": "73a3ddf9b340170175022c804ae50e809f2c27218f62dd873dc780565f230006",
+          "bundledAt": "2026-11-04T21:05:35.16+07:00",
+          "bundleTimeHash": "98685ce26142d6dc08e4d7020426bbfd4724ebbc76ff0538e6f5efc9ff02d392",
+          "bundleHash": "201fc9fbc843a732b92f76c93fb15f0d5bcb8bcb08e1c58dc72de472b8b70b37"
+        }
+      },
+      {
+        "name": "3 file đưa vào lộn thứ tự",
+        "files": [
+          {
+            "fileHash": "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac",
+            "hashedAt": "2026-11-04T21:05:37.42+07:00"
+          },
+          {
+            "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "hashedAt": "2026-11-04T21:05:35.16+07:00"
+          },
+          {
+            "fileHash": "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a",
+            "hashedAt": "2026-11-04T21:05:39.87+07:00"
+          }
+        ],
+        "bundledAt": "2026-11-04T21:05:39.87+07:00",
+        "expected": {
+          "order": [
+            "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a",
+            "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac"
+          ],
+          "habc": "a37d18250f679d0285cb4d972953b1a06513253cc4da8924f9a308d9a9409214",
+          "bundledAt": "2026-11-04T21:05:39.87+07:00",
+          "bundleTimeHash": "bc4183b336bfb15d34e2de174956d17281bebcfca56bafa527bf8d25e354785c",
+          "bundleHash": "b309e8dccc354ce170fc4e6ee4f4b9c7c5aae6931221d00d65e95173cbfd33df"
+        }
+      },
+      {
+        "name": "2 file trùng nội dung, khác giờ băm",
+        "files": [
+          {
+            "fileHash": "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac",
+            "hashedAt": "2026-11-04T21:10:00.00+07:00"
+          },
+          {
+            "fileHash": "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac",
+            "hashedAt": "2026-11-04T21:10:02.50+07:00"
+          }
+        ],
+        "bundledAt": "2026-11-04T21:10:02.50+07:00",
+        "expected": {
+          "order": [
+            "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac",
+            "25273ef6e2a121755560bb0a8e45cd8f1d2a464222e98dedda92b4f817607eac"
+          ],
+          "habc": "da104d10253e16242cad2d1727f841d623e383bba844cbe79d8900cb07561c8e",
+          "bundledAt": "2026-11-04T21:10:02.50+07:00",
+          "bundleTimeHash": "86f6bb81399ca9bf9f770aea7b6b5892cd3115424ab60b1feac9a0a1ae728648",
+          "bundleHash": "d26b75274db11bf8914552ac5ee1f5fd07c11c8de35c55b4a5234ce8da3c1c93"
+        }
+      }
+    ]
+  },
+  "bundle_court_lot_v1": {
+    "scheme": "court-lot-v1",
+    "formula": "habc như trên; lotMetaHash = SHA256(\"{place}|{fileCount}\"); bundleHash = SHA256(habc ‖ SHA256(bundledAt) ‖ lotMetaHash)",
+    "cases": [
+      {
+        "name": "lô 2 file",
+        "files": [
+          {
+            "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "hashedAt": "2026-11-05T09:30:15.04+07:00"
+          },
+          {
+            "fileHash": "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a",
+            "hashedAt": "2026-11-05T09:30:17.90+07:00"
+          }
+        ],
+        "bundledAt": "2026-11-05T09:30:17.90+07:00",
+        "place": "TAND Quận 1, TP.HCM",
+        "fileCount": 2,
+        "expected": {
+          "order": [
+            "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a"
+          ],
+          "habc": "dac6c395fd41cad1173e845eb507c31d6c24e61590fee0ca05e7451875f33e76",
+          "bundledAt": "2026-11-05T09:30:17.90+07:00",
+          "bundleTimeHash": "0ffecbce36073a939f5bf7938019e3d95be3a411dfb1f3b9440763d88761e077",
+          "lotMetaHash": "f8759cf5d69836eed56d0f2c21201769a52d1e420b1a01a3b0c31a04ab497962",
+          "bundleHash": "384bf3ec090f56b3e2f85cecdc6601b426478ab39afc46f1955fbab93abf7828"
+        }
+      },
+      {
+        "name": "cùng file, đổi nơi nộp",
+        "files": [
+          {
+            "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "hashedAt": "2026-11-05T09:30:15.04+07:00"
+          },
+          {
+            "fileHash": "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a",
+            "hashedAt": "2026-11-05T09:30:17.90+07:00"
+          }
+        ],
+        "bundledAt": "2026-11-05T09:30:17.90+07:00",
+        "place": "TAND Quận 3, TP.HCM",
+        "fileCount": 2,
+        "expected": {
+          "order": [
+            "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a"
+          ],
+          "habc": "dac6c395fd41cad1173e845eb507c31d6c24e61590fee0ca05e7451875f33e76",
+          "bundledAt": "2026-11-05T09:30:17.90+07:00",
+          "bundleTimeHash": "0ffecbce36073a939f5bf7938019e3d95be3a411dfb1f3b9440763d88761e077",
+          "lotMetaHash": "3707ef8f194a02fa55f4261a43f7dc3ac3468dbb1e521be6dbe356d219dfcf59",
+          "bundleHash": "4ccc1ce69b6c484b2327813b42f44fa55f4d2a6e3077514fe8d6999330a690a0"
+        }
+      },
+      {
+        "name": "cùng file, khai sai số lượng",
+        "files": [
+          {
+            "fileHash": "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "hashedAt": "2026-11-05T09:30:15.04+07:00"
+          },
+          {
+            "fileHash": "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a",
+            "hashedAt": "2026-11-05T09:30:17.90+07:00"
+          }
+        ],
+        "bundledAt": "2026-11-05T09:30:17.90+07:00",
+        "place": "TAND Quận 1, TP.HCM",
+        "fileCount": 3,
+        "expected": {
+          "order": [
+            "e3813d16e62741e1056ee1f358df6f6aa0295f7c50ba69ee184984df2a4aff64",
+            "ca8bfe9eee1131eb72893f24eaee95c677daaa15c46fd4b0b79a81edd6d0406a"
+          ],
+          "habc": "dac6c395fd41cad1173e845eb507c31d6c24e61590fee0ca05e7451875f33e76",
+          "bundledAt": "2026-11-05T09:30:17.90+07:00",
+          "bundleTimeHash": "0ffecbce36073a939f5bf7938019e3d95be3a411dfb1f3b9440763d88761e077",
+          "lotMetaHash": "f9dcbbfd51d29272e9958f1c80e91b2a352afc8dd2225a7fe83d6ac8db445bd9",
+          "bundleHash": "5171e540260b49ac8e61a2b48b76b3a90c7cb99d825818471c7eec565d940aa3"
+        }
+      }
+    ]
+  },
+  "merkle_bundle_legacy": {
+    "formula": "nút trong = SHA256(0x01 ‖ trái ‖ phải); chia cây như RFC 6962 (tầng lẻ đẩy nút cuối lên, không nhân đôi); 1 lá: gốc = lá, đường dẫn rỗng. Lá là bundleHash đưa thẳng vào, KHÔNG có tiền tố 0x00: cách neo per_submission đang chạy. Cây theo bản ghi xem merkle_two_level.",
+    "proofStep": "side = phía của hash anh em: L thì hash = SHA256(0x01 ‖ anh_em ‖ hiện_tại), R thì ngược lại",
+    "cases": [
+      {
+        "name": "1 lá",
+        "leaves": [
+          "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea"
+        ],
+        "root": "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea",
+        "proofs": [
+          []
+        ]
+      },
+      {
+        "name": "2 lá",
+        "leaves": [
+          "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea",
+          "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7"
+        ],
+        "root": "d83ab0bad915ece485e3f7828a9ef59661a85d7df61473845a15ae4b0a655beb",
+        "proofs": [
+          [
+            {
+              "side": "R",
+              "hash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea"
+            }
+          ]
+        ]
+      },
+      {
+        "name": "3 lá",
+        "leaves": [
+          "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea",
+          "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+          "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341"
+        ],
+        "root": "c31d87554e830c61744ebf6563d284e8ca30b99415812ac5333d05408b9d0664",
+        "proofs": [
+          [
+            {
+              "side": "R",
+              "hash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7"
+            },
+            {
+              "side": "R",
+              "hash": "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea"
+            },
+            {
+              "side": "R",
+              "hash": "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "d83ab0bad915ece485e3f7828a9ef59661a85d7df61473845a15ae4b0a655beb"
+            }
+          ]
+        ]
+      },
+      {
+        "name": "5 lá",
+        "leaves": [
+          "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea",
+          "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+          "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341",
+          "64874be3f9db619976be668f702bb73923882fd2077798d07d0f0100fc7e02ef",
+          "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863"
+        ],
+        "root": "77e552ffe2563b99eec9409593ede1a5ecc57f99d34ce0ad4a6e68779c454ef8",
+        "proofs": [
+          [
+            {
+              "side": "R",
+              "hash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7"
+            },
+            {
+              "side": "R",
+              "hash": "24b9f6d6ef974e32d932991143ec7dfb731c3f7fd2b8fbe6942e1fd9a0979f6e"
+            },
+            {
+              "side": "R",
+              "hash": "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea"
+            },
+            {
+              "side": "R",
+              "hash": "24b9f6d6ef974e32d932991143ec7dfb731c3f7fd2b8fbe6942e1fd9a0979f6e"
+            },
+            {
+              "side": "R",
+              "hash": "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863"
+            }
+          ],
+          [
+            {
+              "side": "R",
+              "hash": "64874be3f9db619976be668f702bb73923882fd2077798d07d0f0100fc7e02ef"
+            },
+            {
+              "side": "L",
+              "hash": "d83ab0bad915ece485e3f7828a9ef59661a85d7df61473845a15ae4b0a655beb"
+            },
+            {
+              "side": "R",
+              "hash": "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341"
+            },
+            {
+              "side": "L",
+              "hash": "d83ab0bad915ece485e3f7828a9ef59661a85d7df61473845a15ae4b0a655beb"
+            },
+            {
+              "side": "R",
+              "hash": "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "0162c74d2d9ffcc068c5097c189b46166e9039c9ccf0222e889250491184ccb7"
+            }
+          ]
+        ]
+      },
+      {
+        "name": "7 lá",
+        "leaves": [
+          "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea",
+          "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+          "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341",
+          "64874be3f9db619976be668f702bb73923882fd2077798d07d0f0100fc7e02ef",
+          "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863",
+          "92b8a5c2a77e35bff4aaaf3478dcad2a7cf201c4b018efa3bd453a4b1b4f9959",
+          "b9e18c578d3fededa502311ea1b6990bf7a71fa80f318c4c964c30ff1e9c1cbc"
+        ],
+        "root": "b6706b24b6970d5b6feb78412666192bd0cf212e3efb93d766059d2506d2f698",
+        "proofs": [
+          [
+            {
+              "side": "R",
+              "hash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7"
+            },
+            {
+              "side": "R",
+              "hash": "24b9f6d6ef974e32d932991143ec7dfb731c3f7fd2b8fbe6942e1fd9a0979f6e"
+            },
+            {
+              "side": "R",
+              "hash": "71180f48b6d16c23e50b8a756394f7bae23a62393e37c5748f4da2b15deb8558"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "d02f46ec7e3ac9d50a7397c53b9618b846293649600fce054a529d1db13359ea"
+            },
+            {
+              "side": "R",
+              "hash": "24b9f6d6ef974e32d932991143ec7dfb731c3f7fd2b8fbe6942e1fd9a0979f6e"
+            },
+            {
+              "side": "R",
+              "hash": "71180f48b6d16c23e50b8a756394f7bae23a62393e37c5748f4da2b15deb8558"
+            }
+          ],
+          [
+            {
+              "side": "R",
+              "hash": "64874be3f9db619976be668f702bb73923882fd2077798d07d0f0100fc7e02ef"
+            },
+            {
+              "side": "L",
+              "hash": "d83ab0bad915ece485e3f7828a9ef59661a85d7df61473845a15ae4b0a655beb"
+            },
+            {
+              "side": "R",
+              "hash": "71180f48b6d16c23e50b8a756394f7bae23a62393e37c5748f4da2b15deb8558"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "b7a08c97408a35b4bcf1e91b33c9e4df52ffc42cf19ffa3b54e1f174814ce341"
+            },
+            {
+              "side": "L",
+              "hash": "d83ab0bad915ece485e3f7828a9ef59661a85d7df61473845a15ae4b0a655beb"
+            },
+            {
+              "side": "R",
+              "hash": "71180f48b6d16c23e50b8a756394f7bae23a62393e37c5748f4da2b15deb8558"
+            }
+          ],
+          [
+            {
+              "side": "R",
+              "hash": "92b8a5c2a77e35bff4aaaf3478dcad2a7cf201c4b018efa3bd453a4b1b4f9959"
+            },
+            {
+              "side": "R",
+              "hash": "b9e18c578d3fededa502311ea1b6990bf7a71fa80f318c4c964c30ff1e9c1cbc"
+            },
+            {
+              "side": "L",
+              "hash": "0162c74d2d9ffcc068c5097c189b46166e9039c9ccf0222e889250491184ccb7"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "9da8aa90270fe759e59f40790a6a82ebb0776d4f397bb5a3db640a6fc1dd5863"
+            },
+            {
+              "side": "R",
+              "hash": "b9e18c578d3fededa502311ea1b6990bf7a71fa80f318c4c964c30ff1e9c1cbc"
+            },
+            {
+              "side": "L",
+              "hash": "0162c74d2d9ffcc068c5097c189b46166e9039c9ccf0222e889250491184ccb7"
+            }
+          ],
+          [
+            {
+              "side": "L",
+              "hash": "49e72e9f2a39d7b75e3a6b5aa63aecfa7a7668eb479738fb824c41222498b17c"
+            },
+            {
+              "side": "L",
+              "hash": "0162c74d2d9ffcc068c5097c189b46166e9039c9ccf0222e889250491184ccb7"
+            }
+          ]
+        ]
+      }
+    ]
+  },
+  "receipt_signature_eip191": {
+    "formula": "signedMessage (58 byte) = \"EVC-RECEIPT-v1\" (14) ‖ keyId u32 (4) ‖ seq u64 (8) ‖ recordHash (32), big-endian; signature = EIP-191 personal_sign(signedMessage), hex 65 byte",
+    "privateKey": "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+    "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "note": "Khóa test công khai (Hardhat #0), không dùng thật. Chữ ký EIP-191 tất định (RFC 6979) nên cố định.",
+    "case": {
+      "name": "tạm: recordHash = SHA256(biên nhận JSON), seq = số của mã biên nhận",
+      "keyId": 1,
+      "seq": 42,
+      "receipt": {
+        "receiptCode": "TX-0042",
+        "type": "SELF",
+        "submittedAt": "2026-11-04T21:05:35.16+07:00",
+        "bundle": {
+          "bundleHash": "325559684e773c108b84315e860d44e3c9f3c07d2cf64757f9043fe67ff03784"
+        },
+        "signer": {
+          "algorithm": "EIP-191",
+          "keyNo": 1,
+          "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        }
+      },
+      "canonicalJson": "{\"bundle\":{\"bundleHash\":\"325559684e773c108b84315e860d44e3c9f3c07d2cf64757f9043fe67ff03784\"},\"receiptCode\":\"TX-0042\",\"signer\":{\"address\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"algorithm\":\"EIP-191\",\"keyNo\":1},\"submittedAt\":\"2026-11-04T21:05:35.16+07:00\",\"type\":\"SELF\"}",
+      "recordHash": "f1f23fa6f5f6240ae95a73f774373c01a5046ba7b946a43401946dcf7924f625",
+      "signedMessage": "4556432d524543454950542d763100000001000000000000002af1f23fa6f5f6240ae95a73f774373c01a5046ba7b946a43401946dcf7924f625",
+      "signature": "0x0ab8d59d3258d69be17c093658dad0d90c4abb355c5d893ce65661b95a166b5717724d25ea4b7300b3058027f52832b26a0c301d589fb18db01cbda28757e5fb1b"
+    }
+  }
+}
