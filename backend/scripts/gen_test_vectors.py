@@ -18,8 +18,13 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.core.hashing import (BUNDLE_SCHEME, LOT_SCHEME, CHUNK_SIZE, compute_bundle, compute_lot_bundle, hash_stream,
                               leaf_hash, lot_meta_hash)
-from app.core.merkle import build_tree
-from app.core.signing import canonical_json, sign_receipt, signed_message, signer_address
+import uuid
+
+from app.core.merkle import build_tree, build_two_level, record_leaf
+from app.core.record import ZERO32, EventType, Record, Result, ref32
+from app.core.signing import build_signed_message, canonical_json, sign_receipt, signed_message, signer_address
+from eth_account import Account
+from eth_account.messages import encode_defunct
 
 OUTPUT = BACKEND_DIR.parent / "docs" / "test-vectors.json"
 
@@ -110,28 +115,146 @@ def merkle_vectors() -> list[dict]:
     return out
 
 
-def signature_vector() -> dict:
+def eip191_sign(message: bytes) -> str:
+    signed = Account.sign_message(encode_defunct(primitive=message), private_key=TEST_SIGNING_KEY)
+    return "0x" + signed.signature.hex().removeprefix("0x")
+
+
+def interim_receipt_signature_vector() -> dict:
+    """Cách hệ thống đang ký TRƯỚC khi có bản ghi 164 byte: recordHash tạm = SHA256(biên nhận JSON)."""
     receipt = {"receiptCode": "TX-0042", "type": "SELF", "submittedAt": "2026-11-04T21:05:35.16+07:00",
                "bundle": {"bundleHash": sha256_hex(b"bundle-demo")},
                "signer": {"algorithm": "EIP-191", "keyNo": 1, "address": signer_address(TEST_SIGNING_KEY)}}
-    key_no, seq = 1, 42
+    key_id, seq = 1, 42
     return {
-        "note": "Khóa test công khai (Hardhat #0), không dùng thật. Chữ ký EIP-191 tất định (RFC 6979) nên cố định.",
-        "privateKey": TEST_SIGNING_KEY,
-        "address": signer_address(TEST_SIGNING_KEY),
-        "keyNo": key_no,
+        "name": "tạm: recordHash = SHA256(biên nhận JSON), seq = số của mã biên nhận",
+        "keyId": key_id,
         "seq": seq,
         "receipt": receipt,
         "canonicalJson": canonical_json(receipt).decode("utf-8"),
-        "receiptDigest": sha256_hex(canonical_json(receipt)),
-        "signedMessage": signed_message(key_no, seq, receipt).hex(),
-        "signature": sign_receipt(TEST_SIGNING_KEY, key_no, seq, receipt),
+        "recordHash": sha256_hex(canonical_json(receipt)),
+        "signedMessage": signed_message(key_id, seq, receipt).hex(),
+        "signature": sign_receipt(TEST_SIGNING_KEY, key_id, seq, receipt),
     }
+
+
+# ---------------------------------------------------------------- Bản ghi 164 byte (Thẻ 22, phần 2-4, 6)
+# Kịch bản: Minh lưu chứng (seq 1), Lan lưu chứng (seq 2), Minh lưu chứng (seq 3) -> một đợt, hai nhóm.
+# Sau đó thư ký đối chiếu file của Minh (E, seq 4, trỏ về seq 1) rồi gửi giám định (C, seq 5, trỏ về seq 4).
+MINH = uuid.UUID("11111111-1111-4111-8111-111111111111")
+LAN = uuid.UUID("22222222-2222-4222-8222-222222222222")
+THU_KY = uuid.UUID("33333333-3333-4333-8333-333333333333")
+VU_AN = uuid.UUID("44444444-4444-4444-8444-444444444444")
+TS0 = 1793800000  # 2026-11-04T23:26:40+07:00
+
+
+def demo_records() -> list[Record]:
+    specs = [
+        (EventType.A, H_HOP_DONG, None, MINH, TS0, Result.NOT_APPLICABLE, 0),
+        (EventType.A, H_ANH, None, LAN, TS0 + 60, Result.NOT_APPLICABLE, 0),
+        (EventType.A, H_GHI_AM, None, MINH, TS0 + 120, Result.NOT_APPLICABLE, 0),
+        (EventType.E, H_HOP_DONG, VU_AN, THU_KY, TS0 + 86400, Result.MATCH, 1),
+        (EventType.C, H_HOP_DONG, VU_AN, THU_KY, TS0 + 2 * 86400, Result.MATCH, 4),
+    ]
+    records, prev = [], ZERO32
+    for seq, (type_, file_hash, case, actor, ts, result, ref_seq) in enumerate(specs, 1):
+        record = Record(seq, type_, bytes.fromhex(file_hash), ref32(case), ref32(actor), ts, result, ref_seq, prev)
+        records.append(record)
+        prev = record.record_hash()
+    return records
+
+
+def record_view(record: Record) -> dict:
+    return {
+        "fields": {"seq": record.seq, "type": record.type.name, "typeByte": int(record.type),
+                   "fileHash": record.file_hash.hex(), "caseRef": record.case_ref.hex(),
+                   "actorRef": record.actor_ref.hex(), "ts": record.ts, "result": int(record.result),
+                   "refSeq": record.ref_seq, "prevRecordHash": record.prev_record_hash.hex()},
+        "hex": record.encode().hex(),
+        "length": len(record.encode()),
+        "recordHash": record.record_hash().hex(),
+    }
+
+
+def record_vectors() -> dict:
+    records = demo_records()
+    batch = records[:3]  # đợt 1: seq 1-3 (chỉ bản ghi lưu chứng)
+    tree = build_two_level([(r.seq, r.actor_ref.hex(), r.record_hash()) for r in batch])
+    seq3 = records[2]
+    message = build_signed_message(1, seq3.seq, seq3.record_hash())
+    good = records[0].encode()
+    return {
+        "record_164": {
+            "layout": "label \"EVC-REC-v1\" 10 | seq u64 8 | type u8 1 (A=1,E=2,C=3,D=4) | fileHash 32 | caseRef 32 | "
+                      "actorRef 32 | ts u64 8 (giây Unix) | result u8 1 (0 không áp dụng, 1 MATCH, 2 MISMATCH, 3 NO_A) | "
+                      "refSeq u64 8 | prevRecordHash 32; big-endian; tổng 164",
+            "refs": "caseRef/actorRef = UUID 16 byte + 16 byte 0 (1027_Tech: UserID, mã vụ án nội bộ, không salt); "
+                    "loại A: caseRef toàn 0",
+            "recordHash": "SHA256(164 byte)",
+            "actors": {"Minh": str(MINH), "Lan": str(LAN), "thư ký": str(THU_KY), "vụ án": str(VU_AN)},
+            "cases": [record_view(r) for r in records],
+        },
+        "hash_chain": {
+            "rule": "seq tăng liên tục từ 1; prevRecordHash(seq n) = recordHash(seq n-1); seq 1 có prevRecordHash toàn 0",
+            "recordHashes": [r.record_hash().hex() for r in records],
+            "tamperedSeq2Hex": _flip_last_byte_of_file_hash(records[1]),
+            "tamperedFirstBadSeq": 3,
+        },
+        "merkle_two_level": {
+            "formula": "lá = SHA256(0x00 ‖ recordHash); trong mỗi nhóm (cùng actorRef) dựng cây RFC 6962 ra subRoot; "
+                       "nhóm xếp theo seq nhỏ nhất; tầng trên dựng cây RFC 6962 trên các subRoot (đưa thẳng vào như nút, "
+                       "không thêm 0x00) ra root. Nút trong = SHA256(0x01 ‖ trái ‖ phải).",
+            "assumption": "Cách đưa subRoot vào tầng trên (không thêm 0x00) cần nhóm xác nhận.",
+            "batchSeqs": [r.seq for r in batch],
+            "groups": tree["groups"],
+            "root": tree["root"],
+            "paths": {str(seq): path for seq, path in tree["paths"].items()},
+        },
+        "receipt_seq3": {
+            "formula": "signedMessage (58) = \"EVC-RECEIPT-v1\" 14 ‖ keyId u32 4 ‖ seq u64 8 ‖ recordHash 32; "
+                       "chữ ký EIP-191 personal_sign trên 58 byte",
+            "privateKey": TEST_SIGNING_KEY,
+            "address": signer_address(TEST_SIGNING_KEY),
+            "keyId": 1,
+            "seq": seq3.seq,
+            "recordHash": seq3.record_hash().hex(),
+            "signedMessage": message.hex(),
+            "signature": eip191_sign(message),
+            "groupPath": tree["paths"][3]["groupPath"],
+            "batchPath": tree["paths"][3]["batchPath"],
+            "root": tree["root"],
+        },
+        "must_reject": [
+            {"name": "bản ghi 163 byte", "hex": good[:163].hex(), "reason": "sai độ dài"},
+            {"name": "nhãn sai EVC-REX-v1", "hex": (b"EVC-REX-v1" + good[10:]).hex(), "reason": "sai nhãn"},
+            {"name": "loại sự kiện 9", "hex": (good[:18] + bytes([9]) + good[19:]).hex(), "reason": "type ngoài 1-4"},
+            {"name": "kết quả 7", "hex": (good[:123] + bytes([7]) + good[124:]).hex(), "reason": "result ngoài 0-3"},
+            {"name": "seq 1 có prevRecordHash khác 0", "hex": (good[:-32] + b"\x01" * 32).hex(),
+             "reason": "bản ghi đầu tiên phải có prevRecordHash toàn 0"},
+            {"name": "bản ghi A có caseRef khác 0", "hex": (good[:51] + b"\x01" + good[52:]).hex(),
+             "reason": "loại A không có vụ án"},
+        ],
+    }
+
+
+def _flip_last_byte_of_file_hash(record: Record) -> str:
+    raw = bytearray(record.encode())
+    raw[18 + 32] ^= 0x01  # byte cuối của fileHash (label 10 + seq 8 + type 1 = 19; fileHash 19..50)
+    return bytes(raw).hex()
 
 
 def build() -> dict:
     return {
-        "version": "evidencechain-test-vectors-v1",
+        "version": "evidencechain-test-vectors-v2",
+        "parts": {
+            "1_che_ma": "Bỏ: 1027_Tech dùng UserID và mã vụ án nội bộ, không salt/HMAC (xem record_164.refs).",
+            "2_ban_ghi_164": "record_164", "3_noi_chuoi": "hash_chain", "4_merkle_hai_tang": "merkle_two_level",
+            "5_payload_anch": "Chưa có: 1027_Tech và 1026_Tech khác nhau về nội dung ANCH, Thẻ 22 ghi 92 byte còn "
+                              "1026_Tech ghi 93 byte. Chờ nhóm chốt.",
+            "6_bien_nhan": "receipt_seq3 (đích) và receipt_signature_eip191 (cách đang chạy tạm)",
+            "mau_phai_tu_choi": "must_reject",
+        },
+        **record_vectors(),
         "conventions": {
             "hash": "SHA-256, viết hex chữ thường 64 ký tự",
             "concat": "‖ = nối 32 byte NHỊ PHÂN của từng hash (không nối chuỗi hex)",
@@ -155,17 +278,20 @@ def build() -> dict:
                        "bundleHash = SHA256(habc ‖ SHA256(bundledAt) ‖ lotMetaHash)",
             "cases": lot_vectors(),
         },
-        "merkle": {
-            "formula": "nút trong = SHA256(0x01 ‖ trái ‖ phải); tầng lẻ đẩy nút cuối lên (không nhân đôi); "
-                       "1 lá: gốc = lá, đường dẫn rỗng. Lá đưa vào là bundleHash, CHƯA có tiền tố 0x00 "
-                       "(RFC 6962 có): sẽ đổi khi chốt bản ghi 164 byte.",
+        "merkle_bundle_legacy": {
+            "formula": "nút trong = SHA256(0x01 ‖ trái ‖ phải); chia cây như RFC 6962 (tầng lẻ đẩy nút cuối lên, "
+                       "không nhân đôi); 1 lá: gốc = lá, đường dẫn rỗng. Lá là bundleHash đưa thẳng vào, KHÔNG có "
+                       "tiền tố 0x00: cách neo per_submission đang chạy. Cây theo bản ghi xem merkle_two_level.",
             "proofStep": "side = phía của hash anh em: L thì hash = SHA256(0x01 ‖ anh_em ‖ hiện_tại), R thì ngược lại",
             "cases": merkle_vectors(),
         },
         "receipt_signature_eip191": {
-            "formula": "signedMessage (58 byte) = \"EVCHAIN-RECEIPT1\" (16) ‖ keyNo (2, big-endian) ‖ seq (8, big-endian) "
-                       "‖ SHA256(canonicalJson); signature = EIP-191 personal_sign(signedMessage), hex 65 byte",
-            "case": signature_vector(),
+            "formula": "signedMessage (58 byte) = \"EVC-RECEIPT-v1\" (14) ‖ keyId u32 (4) ‖ seq u64 (8) ‖ recordHash (32), "
+                       "big-endian; signature = EIP-191 personal_sign(signedMessage), hex 65 byte",
+            "privateKey": TEST_SIGNING_KEY,
+            "address": signer_address(TEST_SIGNING_KEY),
+            "note": "Khóa test công khai (Hardhat #0), không dùng thật. Chữ ký EIP-191 tất định (RFC 6979) nên cố định.",
+            "case": interim_receipt_signature_vector(),
         },
     }
 
