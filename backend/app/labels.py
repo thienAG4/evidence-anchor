@@ -20,7 +20,8 @@ RECORDED_LABELS = {
 
 ANCHOR_STATUS_LABELS = {
     "PENDING_ANCHOR": "Chờ neo",
-    "ANCHORED": "Đã neo",
+    "ANCHORED_UNFINALIZED": "Đã neo, chờ chốt",
+    "ANCHORED": "Hoàn chỉnh",
     "ANCHOR_FAILED": "Neo lỗi, đang thử lại",
 }
 

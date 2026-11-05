@@ -25,6 +25,14 @@ def _rpc(method: str, params: list):
     return body.get("result")
 
 
+def get_finalized_block_number() -> int:
+    """Số block mới nhất mạng đã chốt (finalized): block cũ hơn không còn bị hủy, xếp lại."""
+    block = _rpc("eth_getBlockByNumber", ["finalized", False])
+    if not block:
+        raise ChainReadError("RPC Sepolia không trả block finalized.")
+    return int(block["number"], 16)
+
+
 def get_anchor_tx(tx_hash: str) -> dict | None:
     """{from, to, input (không 0x), success, blockNumber}; None nếu không có giao dịch này."""
     tx = _rpc("eth_getTransactionByHash", [tx_hash])

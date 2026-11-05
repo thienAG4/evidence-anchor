@@ -25,7 +25,7 @@ if str(BACKEND_DIR) not in sys.path:
 from app.core import log_record as lr
 from app.core.hashing import compute_bundle, hash_file, leaf_hash
 from app.core.payload import decode_anch
-from app.core.merkle import verify_batch_proof
+from app.core.merkle import verify_record_proof
 from app.core.receipt import verify as verify_signature
 
 results = []  # (trạng thái, tên bước)
@@ -163,7 +163,10 @@ def main():
         receipt_body = api.call("GET", f"/receipts/{code}", party).json()
     status = receipt_body["status"]
     if status == "ANCHORED":
-        step("Biên nhận chuyển sang Đã neo", True, receipt_body["anchor"]["explorerUrl"])
+        step("Biên nhận chuyển sang Đã neo (block đã chốt)", True, receipt_body["anchor"]["explorerUrl"])
+    elif status == "ANCHORED_UNFINALIZED":
+        step("Biên nhận chuyển sang Đã neo", True, "block chưa chốt (~13 phút): biên nhận chưa hoàn chỉnh")
+        step("Chưa chốt -> biên nhận chưa có phần anchor", receipt_body["anchor"] is None)
     elif status == "ANCHOR_FAILED":
         step("Biên nhận chuyển sang Đã neo", False, "neo lỗi — xem log worker (ví hết Sepolia ETH?)")
     else:
@@ -190,7 +193,7 @@ def main():
             and lr.record_hash(raw) == r["recordHash"] and lr.decode(raw)["fileHash"] == f["fileHash"]
             and lr.decode(raw)["eventType"] == lr.EVENT_A for f in receipt["files"]))
         step("Đường dẫn Merkle hai tầng từ từng bản ghi đi tới đúng root đợt neo",
-             all(verify_batch_proof(r["recordHash"], r["groupPath"], r["batchPath"], r["root"])
+             all(verify_record_proof(bytes.fromhex(r["recordHash"]), r["groupPath"], r["batchPath"], r["root"])
                  for r in records.values()))
         step("Dữ liệu đợt neo (payload) chứa root và seq của bản ghi", all(
             (p := decode_anch(bytes.fromhex(r["payload"]))).root.hex() == r["root"]

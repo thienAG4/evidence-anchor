@@ -124,7 +124,8 @@
 
   /**
    * Biên nhận từ API → { id, litigant, status, recordedAt, lockedAt, phase, files: [{ code, name, hash, result, checkedAt }] }.
-   * status: recorded (chưa neo lên chuỗi) → locked (đã neo, không ai sửa được) → checked (Tòa đã đối chiếu đủ n/n file).
+   * status: recorded (chưa neo lên chuỗi) → anchoring (đã neo, block chưa chốt) → locked (block đã chốt,
+   * không ai sửa được) → checked (Tòa đã đối chiếu đủ n/n file).
    * lockedAt: giờ neo thật; chưa neo thì null (không đoán giờ khóa).
    * Tòa đã đối chiếu một phần: các file còn lại là 'checking' (Đang kiểm tra), chưa bắt đầu thì 'unchecked'.
    */
@@ -133,7 +134,8 @@
     return {
       id: view.receiptCode,
       litigant: view.owner.fullName,
-      status: view.status !== 'ANCHORED' ? 'recorded' : (view.checked ? 'checked' : 'locked'),
+      status: view.status === 'ANCHORED' ? (view.checked ? 'checked' : 'locked')
+        : (view.status === 'ANCHORED_UNFINALIZED' ? 'anchoring' : 'recorded'),
       anchorStatus: view.status,
       recordedAt: vnText(view.submittedAt),
       lockedAt: view.anchoredAt ? vnText(view.anchoredAt) : null,

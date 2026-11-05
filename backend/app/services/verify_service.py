@@ -7,9 +7,9 @@ from typing import BinaryIO
 
 from app.config import settings
 from app.core import log_record as lr
-from app.core.chain_reader import ChainReadError, get_anchor_tx
+from app.core.chain_reader import ChainReadError, get_anchor_tx, get_finalized_block_number
 from app.core.hashing import BUNDLE_SCHEME, LOT_SCHEME, compute_bundle, compute_lot_bundle, hash_stream, leaf_hash
-from app.core.merkle import verify_batch_proof
+from app.core.merkle import verify_record_proof
 from app.core.payload import decode_anch
 from app.core import receipt as receipt_signing
 from app.errors.codes import ErrorCode
@@ -76,12 +76,15 @@ def _check_records(check, receipt: dict, anchor: dict) -> None:
         for f in receipt["files"]:
             r = records.get(f["fileCode"])
             raw = bytes.fromhex(r["raw"]) if r else b""
-            decoded = lr.decode(raw) if len(raw) == lr.RECORD_SIZE else None
+            try:
+                decoded = lr.decode(raw)
+            except ValueError:  # RecordError: sai độ dài, nhãn, loại, kết quả
+                decoded = None
             if not decoded or lr.record_hash(raw) != r["recordHash"] or decoded["fileHash"] != f["fileHash"] \
                     or decoded["eventType"] != expected_event or decoded["seq"] != r["seq"]:
                 bad_records.append(f["fileCode"])
                 continue
-            if not verify_batch_proof(r["recordHash"], r["groupPath"], r["batchPath"], r["root"]):
+            if not verify_record_proof(bytes.fromhex(r["recordHash"]), r["groupPath"], r["batchPath"], r["root"]):
                 bad_proofs.append(f["fileCode"])
             try:
                 batch = decode_anch(bytes.fromhex(r["payload"]))
@@ -105,10 +108,15 @@ def _check_records(check, receipt: dict, anchor: dict) -> None:
     for tx_hash, payload in payloads.items():  # các file thường cùng 1 giao dịch
         try:
             tx = get_anchor_tx(tx_hash)
+            finalized_block = get_finalized_block_number()
         except ChainReadError as exc:
             raise AppError(502, ErrorCode.CHAIN_UNAVAILABLE, str(exc)) from None
         suffix = f" ({tx_hash[:10]}…)" if len(payloads) > 1 else ""
         check("Giao dịch neo tồn tại và thành công" + suffix, tx is not None and tx["success"])
+        tx_block = tx["blockNumber"] if tx else None
+        final_ok = tx_block is not None and tx_block <= finalized_block
+        check("Block chứa giao dịch đã chốt (finalized)" + suffix, final_ok, None if final_ok else
+              f"block {tx_block}, block chốt mới nhất {finalized_block}: chờ khoảng 13 phút rồi kiểm lại")
         check("Input Data của giao dịch = dữ liệu đợt neo" + suffix, tx is not None and tx["input"] == payload.lower())
         if not wallet:
             check("Giao dịch gửi từ ví của hệ thống" + suffix, False, "server chưa cấu hình ANCHOR_WALLET_ADDRESS")

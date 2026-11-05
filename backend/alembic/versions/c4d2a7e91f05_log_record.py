@@ -1,7 +1,7 @@
 """log_record: bản ghi sự kiện 164 byte nối chuỗi, record_seq, AnchorLeaf trỏ LogRecord
 
 Revision ID: c4d2a7e91f05
-Revises: 9b1ed68a757b
+Revises: 4f2c8a1d9e37
 Create Date: 2026-11-05 10:00:00.000000
 
 Dữ liệu cũ: mỗi dòng FileHash / AppraisalStep / Dossier / IntegrityCheck được ghi bù một LogRecord theo thứ tự thời
@@ -17,7 +17,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = 'c4d2a7e91f05'
-down_revision: Union[str, None] = '9b1ed68a757b'
+down_revision: Union[str, None] = '4f2c8a1d9e37'  # sau anchor_finality (Thien) để chỉ có một head
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -28,7 +28,7 @@ RESULT_CODES = {None: 0, "UNCHANGED": 1, "CHANGED": 2, "NO_BASELINE": 3}
 
 
 def _encode(seq, event_type, file_hash, case_id, actor_id, ts, result, ref_seq, prev):
-    """Giữ nguyên bố cục của app.core.log_record lúc viết migration này."""
+    """Bố cục cũ lúc viết migration này; migration b3e1f6a9c207 mã hóa lại theo app.core.record."""
     raw = (struct.pack(">QH", seq, event_type) + bytes.fromhex(file_hash)
            + str(case_id or NIL_UUID).encode("ascii") + str(actor_id).encode("ascii")
            + struct.pack(">QHQ", ts, result, ref_seq or 0) + bytes.fromhex(prev))

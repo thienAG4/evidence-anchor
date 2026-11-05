@@ -16,7 +16,8 @@ dòng cũ mà ghi thêm vào bảng riêng (`AnchorLeaf`, `ChainTx`, `ChainTxRes
 |---|---|
 | Submission, FileHash, LogRecord, AnchorBatch, AnchorLeaf, ChainTx, ChainTxResult, IntegrityCheck, AppraisalStep, Dossier, DossierItem, AccessLog | User, CourtCase, CaseParticipant, AnchorState (chỉ UPDATE, không thêm / xóa dòng) |
 
-Chưa làm: `OtsStamp` (chỉ cần nếu demo đóng dấu OpenTimestamps).
+Chưa làm: `OtsStamp` (chỉ cần nếu demo đóng dấu OpenTimestamps). `AnchorFinality` (bản trước) đã thay bằng
+`ChainTxResult` có `status = FINALIZED`.
 
 ## USER
 
@@ -83,7 +84,10 @@ Bỏ so với bản trước: `bundle_tx_hash`, `block_number`, `block_time`, `s
 
 Trạng thái neo **suy ra** từ bản ghi (`record_seq`) của các file trong lần nộp, không lưu:
 
-- `ANCHORED`: bản ghi của **mọi** file nằm trong một `AnchorBatch` có giao dịch ANCH với `ChainTxResult` CONFIRMED.
+- `ANCHORED` (hoàn chỉnh): bản ghi của **mọi** file nằm trong `AnchorBatch` có giao dịch ANCH với `ChainTxResult`
+  FINALIZED (block chứa giao dịch đã chốt, tài liệu kỹ thuật 7.1). Chỉ lúc này biên nhận mới có phần `anchor` và thư
+  ký mới đối chiếu được.
+- `ANCHORED_UNFINALIZED` ("Đã neo, chờ chốt"): giao dịch đã CONFIRMED nhưng block chưa chốt (khoảng 13 phút).
 - `ANCHOR_FAILED`: có file nằm trong đợt mà giao dịch ANCH bị FAILED (job neo dừng, cần người xử lý).
 - `PENDING_ANCHOR`: còn lại (chưa vào đợt, hoặc giao dịch chưa lên khối).
 
@@ -131,19 +135,21 @@ Chỉ ghi thêm. Mỗi bản ghi nối với bản ghi liền trước bằng `p
 | record_hash | CHAR(64) | UQ, NN | `SHA256(raw)`; lá Merkle = `SHA256(0x00 ‖ record_hash)` |
 | raw | BYTEA | NN, CHECK độ dài = 164 | Nguyên 164 byte để đối chiếu và xuất biên nhận |
 
-Bố cục `raw` (big-endian, theo đúng thứ tự cột; code: `backend/app/core/log_record.py`):
+Bố cục `raw` `EVC-REC-v1` (big-endian, tài liệu kỹ thuật 5.4.1, tab 1026/1027_Tech; code: `backend/app/core/record.py`,
+có test-vectors trong `docs/test-vectors.json`):
 
 | Trường | Byte | Cách ghi |
 |---|---|---|
+| label | 10 | ASCII `EVC-REC-v1` |
 | seq | 8 | uint64 |
-| event_type | 2 | uint16 |
+| type | 1 | uint8 (`event_type`) |
 | file_hash | 32 | SHA-256 nhị phân |
-| case_id | 36 | UUID dạng chữ ASCII; trống = `00000000-0000-0000-0000-000000000000` |
-| actor_id | 36 | UUID dạng chữ ASCII |
+| caseRef | 32 | UUID 16 byte + 16 byte số 0; loại A toàn số 0 |
+| actorRef | 32 | UUID 16 byte + 16 byte số 0 |
 | ts | 8 | uint64 |
-| result | 2 | uint16 |
-| ref_seq | 8 | uint64; trống = 0 |
-| prev_record_hash | 32 | SHA-256 nhị phân |
+| result | 1 | uint8 |
+| refSeq | 8 | uint64; trống = 0 |
+| prevRecordHash | 32 | SHA-256 nhị phân |
 | **Tổng** | **164** | |
 
 Sự kiện nào ghi bản ghi nào:
@@ -252,6 +258,18 @@ Worker neo, mỗi vòng:
 4. Chốt đợt từ các bản ghi sau đợt trước, rồi gửi ANCH.
 
 NOOP chưa tự động: hủy một đợt kẹt là thao tác người vận hành.
+
+## ANCHORFINALITY (block chứa giao dịch neo đã chốt)
+
+| Attribute | Kiểu | Ràng buộc | Mô tả |
+|---|---|---|---|
+| id | UUID | PK | |
+| anchor_id | UUID | FK → Anchor, UQ, NN | Mỗi lần neo tối đa 1 dòng |
+| tx_block_number | BIGINT | NN | Block thật chứa giao dịch lúc chốt (đọc lại từ chuỗi; khác `Anchor.block_number` nếu block bị xếp lại) |
+| finalized_block_number | BIGINT | NN | Block chốt mới nhất lúc worker kiểm |
+| created_at | TIMESTAMPTZ | NN | |
+
+Worker ghi khi giao dịch còn, thành công, và `tx_block_number <= finalized_block_number`. Không sửa `Anchor`.
 
 ## INTEGRITYCHECK (mỗi lần tính lại = một dòng)
 

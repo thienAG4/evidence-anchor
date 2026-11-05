@@ -32,6 +32,9 @@ def upgrade() -> None:
     op.execute("DROP SEQUENCE IF EXISTS log_record_seq")
     op.create_unique_constraint('log_record_prev_record_hash_key', 'log_record', ['prev_record_hash'])
 
+    # anchor_finality (4f2c8a1d9e37) trỏ vào anchor: bỏ trước; FINALIZED giờ ghi ở chain_tx_result.
+    # IF EXISTS: DB đã chạy migration này trước khi nối sau 4f2c8a1d9e37 thì không có bảng đó.
+    op.execute("DROP TABLE IF EXISTS anchor_finality")
     op.drop_table('anchor_leaf')
     op.drop_table('anchor')
     op.execute("DROP TYPE IF EXISTS anchor_mode")
@@ -146,7 +149,17 @@ def downgrade() -> None:
     sa.UniqueConstraint('anchor_id', 'record_seq')
     )
     op.create_index(op.f('ix_anchor_leaf_record_seq'), 'anchor_leaf', ['record_seq'], unique=False)
-    _grant(["GRANT SELECT, INSERT ON anchor, anchor_leaf"])
+    op.create_table('anchor_finality',
+    sa.Column('anchor_id', sa.UUID(), nullable=False),
+    sa.Column('tx_block_number', sa.BigInteger(), nullable=False),
+    sa.Column('finalized_block_number', sa.BigInteger(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.ForeignKeyConstraint(['anchor_id'], ['anchor.id']),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('anchor_id')
+    )
+    _grant(["GRANT SELECT, INSERT ON anchor, anchor_leaf, anchor_finality"])
 
     op.drop_constraint('log_record_prev_record_hash_key', 'log_record', type_='unique')
     op.execute("CREATE SEQUENCE log_record_seq")

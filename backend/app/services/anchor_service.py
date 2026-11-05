@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.core import anchor_payload
 from app.core.log_record import GENESIS_HASH
-from app.core.merkle import build_batch
+from app.core.merkle import build_two_level
 from app.core.payload import Anch
 from app.core.receipt import signing_address
 from app.db.enums import AnchorStatus, ChainTxKind, ChainTxStatus
@@ -40,14 +40,18 @@ def _batch_results(db: Session, batch_ids) -> tuple[dict, set]:
 
 
 def anchor_state(db: Session, submission_id) -> tuple[AnchorStatus, ChainTxResult | None]:
-    """ANCHORED khi bản ghi của mọi file nằm trong đợt có giao dịch đã lên khối (trả kết quả muộn nhất);
+    """Bản ghi của mọi file nằm trong đợt có giao dịch đã lên khối: ANCHORED khi mọi khối đó đã chốt (FINALIZED,
+    tài liệu kỹ thuật 7.1: biên nhận hoàn chỉnh), chưa chốt hết thì ANCHORED_UNFINALIZED (trả kết quả muộn nhất).
     ANCHOR_FAILED khi có đợt chứa bản ghi mà giao dịch lỗi. Job neo đang dừng thì bản ghi chưa vào đợt vẫn là chờ neo."""
     seqs = list(db.scalars(select(FileHash.record_seq).where(FileHash.submission_id == submission_id)))
     batch_of = dict(db.execute(select(AnchorLeaf.record_seq, AnchorLeaf.batch_id)
                                .where(AnchorLeaf.record_seq.in_(seqs))).all())
     confirmed, failed = _batch_results(db, set(batch_of.values()))
     if seqs and all(batch_of.get(s) in confirmed for s in seqs):
-        return AnchorStatus.ANCHORED, max((confirmed[batch_of[s]][1] for s in seqs), key=lambda r: r.block_number)
+        latest = max((confirmed[batch_of[s]][1] for s in seqs), key=lambda r: r.block_number)
+        if all(confirmed[batch_of[s]][2] for s in seqs):
+            return AnchorStatus.ANCHORED, latest
+        return AnchorStatus.ANCHORED_UNFINALIZED, latest
     if any(batch_of.get(s) in failed for s in seqs):
         return AnchorStatus.ANCHOR_FAILED, None
     return AnchorStatus.PENDING_ANCHOR, None
@@ -158,10 +162,9 @@ def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
     if not records:
         db.rollback()
         return None
-    groups: dict = {}  # người ghi -> bản ghi; nhóm xếp theo bản ghi đầu tiên của nhóm
-    for r in records:
-        groups.setdefault(r.actor_id, []).append(r)
-    root, proofs = build_batch([[r.record_hash for r in g] for g in groups.values()])
+    # Cây hai tầng nhóm theo người ghi (app.core.merkle, có test-vectors)
+    tree = build_two_level([(r.seq, str(r.actor_id), bytes.fromhex(r.record_hash)) for r in records])
+    root = tree["root"]
     batch_no, prev_root = (last.batch_no + 1, last.root) if last else (1, GENESIS_HASH)
     batch = AnchorBatch(batch_no=batch_no, from_seq=from_seq, to_seq=records[-1].seq, prev_root=prev_root, root=root,
                         payload=Anch(batch_no, len(records), bytes.fromhex(prev_root), bytes.fromhex(root)).encode(),
@@ -169,11 +172,11 @@ def cut_batch(db: Session, limit: int = 500) -> AnchorBatch | None:
     state.next_nonce += 1
     db.add(batch)
     db.flush()
-    for g, (group, group_proofs) in enumerate(zip(groups.values(), proofs)):
-        for i, (record, proof) in enumerate(zip(group, group_proofs)):
-            db.add(AnchorLeaf(batch_id=batch.id, record_seq=record.seq, group_index=g, leaf_index=i,
-                              leaf_hash=proof["leafHash"], group_path=proof["groupPath"],
-                              batch_path=proof["batchPath"]))
+    for g, group in enumerate(tree["groups"]):
+        for i, (seq, leaf) in enumerate(zip(group["seqs"], group["leaves"])):
+            path = tree["paths"][seq]
+            db.add(AnchorLeaf(batch_id=batch.id, record_seq=seq, group_index=g, leaf_index=i, leaf_hash=leaf,
+                              group_path=path["groupPath"], batch_path=path["batchPath"]))
     db.commit()
     return batch
 
@@ -201,10 +204,20 @@ def poll_transactions(db: Session, chain) -> None:
         if ChainTxStatus.CONFIRMED in seen and ChainTxStatus.FINALIZED not in seen:
             confirmed = seen[ChainTxStatus.CONFIRMED]
             finalized_block = finalized_block if finalized_block is not None else chain.finalized_block()
-            if confirmed.block_number <= finalized_block:
-                db.add(ChainTxResult(tx_id=tx.id, status=ChainTxStatus.FINALIZED, block_number=confirmed.block_number,
-                                     block_time=confirmed.block_time, observed_at=_now()))
-                db.commit()
+            if confirmed.block_number > finalized_block:
+                continue  # khối đã lưu còn mới hơn khối chốt: vòng sau kiểm lại
+            # Đọc lại từ chuỗi, không tin số khối đã lưu: giao dịch phải còn, thành công, nằm ở khối đã chốt
+            now = chain.receipt(tx.tx_hash)
+            if not now or not now["success"] or now["blockNumber"] > finalized_block:
+                logger.warning("Giao dịch %s chưa chốt được (khối bị xếp lại?), vòng sau kiểm lại", tx.tx_hash)
+                continue
+            if now["blockNumber"] != confirmed.block_number:
+                logger.warning("Giao dịch %s đã chuyển khối %s -> %s", tx.tx_hash, confirmed.block_number,
+                               now["blockNumber"])
+            db.add(ChainTxResult(tx_id=tx.id, status=ChainTxStatus.FINALIZED, block_number=now["blockNumber"],
+                                 block_time=datetime.fromtimestamp(now["blockTime"], tz=timezone.utc),
+                                 observed_at=_now()))
+            db.commit()
             continue
         if seen or tx.nonce in done_nonces:  # đã có kết quả, hoặc giao dịch khác cùng nonce đã lên khối
             continue

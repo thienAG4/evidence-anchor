@@ -32,7 +32,7 @@
 
   // ---------------------------------------------------------------- Stepper
   function buildSteps() {
-    const isLocked = receipt.status !== 'recorded';
+    const isLocked = EC.isLocked(receipt);
     const checkedCount = files.filter((f) => f.result === 'match' || f.result === 'mismatch').length;
     const inProgress = files.some((f) => f.result === 'checking');
 
@@ -50,7 +50,7 @@
       {
         label: 'Đã khóa, không thể sửa',
         state: isLocked ? 'done' : 'current',
-        time: isLocked ? receipt.lockedAt : 'Chờ neo lên chuỗi công khai', // chưa khóa: không hiện giờ (UI-11)
+        time: isLocked ? receipt.lockedAt : EC.lockPendingText(receipt), // chưa khóa: không hiện giờ (UI-11)
       },
       { label: 'Tòa đã kiểm tra', state: isLocked ? courtStep.state : 'pending', time: isLocked ? courtStep.time : 'Chưa kiểm tra' },
     ];
@@ -88,7 +88,7 @@
   // ---------------------------------------------------------------- Tải biên nhận (UI-16)
   const downloadButton = document.getElementById('receipt-download');
   const downloadNote = document.getElementById('receipt-download-note');
-  if (receipt.status === 'recorded') {
+  if (!EC.isLocked(receipt)) { // gồm 'anchoring': đã neo nhưng block chưa chốt, biên nhận chưa có phần anchor
     downloadNote.hidden = false;
     downloadNote.textContent = 'Biên nhận chưa khóa nên chưa có bằng chứng neo. Bạn vẫn tải được bản tạm (có chữ ký hệ thống); '
       + 'hãy tải lại sau khi trạng thái là "Đã khóa" để có biên nhận hoàn chỉnh.';

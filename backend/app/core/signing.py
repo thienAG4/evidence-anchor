@@ -1,7 +1,8 @@
 """Chữ ký biên nhận tạm theo EIP-191 (tài liệu kỹ thuật mục 6.5).
 
-Nội dung ký dài cố định 58 byte, không ghép chuỗi tùy ý:
-    nhãn "EVCHAIN-RECEIPT1" (16) ‖ số khóa (2) ‖ số thứ tự (8) ‖ SHA256(biên nhận JSON) (32)
+Nội dung ký dài cố định 58 byte, không ghép chuỗi tùy ý (bố cục theo tab 1026_Tech, mục 6.5):
+    nhãn "EVC-RECEIPT-v1" (14) ‖ keyId u32 (4) ‖ seq u64 (8) ‖ recordHash (32), số nguyên big-endian
+Khi chưa có bản ghi 164 byte, "recordHash" tạm là SHA256(biên nhận JSON) và seq là số của mã biên nhận.
 Chữ ký là personal_sign (EIP-191) trên 58 byte đó: 65 byte, dạng hex "0x...".
 Bên kiểm tra khôi phục địa chỉ ký từ chữ ký rồi so với địa chỉ khóa ký đã công bố,
 không tin địa chỉ ghi trong biên nhận.
@@ -13,7 +14,7 @@ from eth_account import Account
 from eth_account.messages import encode_defunct
 from eth_keys.exceptions import BadSignature
 
-RECEIPT_TAG = b"EVCHAIN-RECEIPT1"
+RECEIPT_TAG = b"EVC-RECEIPT-v1"
 SIGNED_MESSAGE_LENGTH = 58
 
 
@@ -22,12 +23,18 @@ def canonical_json(data: dict) -> bytes:
     return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def signed_message(key_no: int, seq: int, receipt: dict) -> bytes:
-    """58 byte được ký: nhãn ‖ số khóa ‖ số thứ tự ‖ SHA256(biên nhận)."""
-    message = (RECEIPT_TAG + key_no.to_bytes(2, "big") + seq.to_bytes(8, "big")
-               + hashlib.sha256(canonical_json(receipt)).digest())
+def build_signed_message(key_id: int, seq: int, record_hash: bytes) -> bytes:
+    """58 byte được ký: nhãn ‖ keyId ‖ seq ‖ recordHash."""
+    if len(record_hash) != 32:
+        raise ValueError("recordHash phải dài 32 byte")
+    message = RECEIPT_TAG + key_id.to_bytes(4, "big") + seq.to_bytes(8, "big") + record_hash
     assert len(message) == SIGNED_MESSAGE_LENGTH
     return message
+
+
+def signed_message(key_no: int, seq: int, receipt: dict) -> bytes:
+    """58 byte được ký cho một biên nhận JSON (recordHash tạm = SHA256 của biên nhận)."""
+    return build_signed_message(key_no, seq, hashlib.sha256(canonical_json(receipt)).digest())
 
 
 def signer_address(private_key_hex: str) -> str:
