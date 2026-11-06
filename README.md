@@ -150,7 +150,7 @@ Biên nhận chỉ **hoàn chỉnh** khi block đã chốt. Giao diện hiện b
 
 | `ANCHOR_MODE` | Khi nào chốt đợt |
 |---|---|
-| `per_submission` | Mỗi vòng worker (`ANCHOR_INTERVAL_SECONDS`, mặc định 15 giây) gom mọi bản ghi đang chờ |
+| `per_submission` | Ngay khi có bản ghi mới: API gửi `NOTIFY anchor_wake` lúc commit, worker đang `LISTEN` dậy chốt đợt và gửi giao dịch (gom các lần ghi trong 1 giây). Không có bản ghi thì worker vẫn chạy mỗi `ANCHOR_INTERVAL_SECONDS` (15 giây) để theo dõi giao dịch đã gửi |
 | `daily` | Mỗi ngày (giờ Việt Nam) một đợt ở mốc `ANCHOR_DAILY_CUTOFF` (mặc định 23:59); ngày bị lỡ thì neo bù, vẫn mỗi ngày một đợt; ngày không có bản ghi thì không neo |
 
 Nút **Neo ngay** trên trang chi tiết biên nhận (`POST /anchor/now`) cho worker chốt các bản ghi đang chờ ở vòng kế,

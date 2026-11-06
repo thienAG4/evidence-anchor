@@ -11,6 +11,13 @@ from app.db.models import CaseParticipant, CourtCase, LogRecord
 
 # Khóa theo transaction: 2 request cùng lúc không cùng lấy một bản ghi liền trước (chuỗi rẽ nhánh)
 CHAIN_LOCK_KEY = 0x45564348  # "EVCH"
+# Worker neo LISTEN kênh này: có bản ghi mới (hoặc bấm Neo ngay) thì chạy vòng neo ngay, không đợi hết chu kỳ
+WAKE_CHANNEL = "anchor_wake"
+
+
+def wake_anchor_worker(db: Session) -> None:
+    """Postgres chỉ gửi NOTIFY khi transaction commit: rollback thì worker không bị đánh thức."""
+    db.execute(text(f"NOTIFY {WAKE_CHANNEL}"))
 
 
 def unix_seconds(value: str | datetime) -> int:
@@ -35,6 +42,7 @@ def append_record(db: Session, *, event_type: int, file_hash: str, actor_id, ts:
                        record_hash=lr.record_hash(raw), raw=raw)
     db.add(record)
     db.flush()
+    wake_anchor_worker(db)
     return record
 
 

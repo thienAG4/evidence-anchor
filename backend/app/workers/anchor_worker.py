@@ -13,12 +13,40 @@ import logging
 import threading
 import time
 
+import psycopg
+
 from app.config import settings
 from app.db.models import AnchorState
 from app.db.session import SessionLocal
 from app.services import anchor_service, ots_service
+from app.services.log_service import WAKE_CHANNEL
 
 logger = logging.getLogger("anchor_worker")
+
+
+class Waker:
+    """Chờ giữa hai vòng neo: dậy ngay khi API NOTIFY (bản ghi mới, Neo ngay), không thì hết chu kỳ mới dậy
+    (vẫn cần để theo dõi giao dịch đã gửi tới CONFIRMED, FINALIZED). Mất kết nối thì chờ hết chu kỳ, vòng sau nối lại."""
+
+    def __init__(self, url: str):
+        self.url = url.replace("postgresql+psycopg://", "postgresql://", 1)
+        self.conn = None
+
+    def wait(self, timeout: float, stop: threading.Event) -> None:
+        try:
+            if self.conn is None or self.conn.closed:
+                self.conn = psycopg.connect(self.url, autocommit=True)
+                self.conn.execute(f"LISTEN {WAKE_CHANNEL}")
+            if any(True for _ in self.conn.notifies(timeout=timeout, stop_after=1)):
+                # Gom các lần ghi sát nhau (vài người bấm cùng lúc) vào cùng một đợt
+                for _ in self.conn.notifies(timeout=1):
+                    pass
+        except psycopg.Error as exc:
+            logger.warning("Không nghe được kênh %s (%s): chờ hết chu kỳ.", WAKE_CHANNEL, exc)
+            if self.conn is not None:
+                self.conn.close()
+            self.conn = None
+            stop.wait(timeout)
 
 
 def run_once(chain) -> int:
@@ -64,6 +92,7 @@ def main():
 
     logger.info("Worker neo chạy, ví %s, mỗi %ss", chain.account.address, settings.anchor_interval_seconds)
     stop = threading.Event()
+    waker = Waker(settings.database_url)
     next_ots = 0.0
     try:
         while not stop.is_set():
@@ -80,7 +109,7 @@ def main():
                         logger.info("OpenTimestamps: %s", result)
                 except Exception:
                     logger.exception("Nâng cấp OpenTimestamps lỗi")
-            stop.wait(settings.anchor_interval_seconds)
+            waker.wait(settings.anchor_interval_seconds, stop)
     except KeyboardInterrupt:
         logger.info("Dừng worker neo.")
 

@@ -88,16 +88,26 @@
       button.disabled = true;
       try {
         showSchedule(await EC.api('/anchor/now', { method: 'POST' }));
-        // Chờ worker neo: trạng thái chuyển sang "Đã neo, chờ chốt" thì tải lại trang
-        const timer = setInterval(async () => {
-          const detail = await EC.api(`/receipts/${encodeURIComponent(receipt.id)}`).catch(() => null);
-          if (detail && detail.view.status !== 'PENDING_ANCHOR') { clearInterval(timer); location.reload(); }
-        }, 5000);
       } catch (err) {
         alert(`Không gửi được yêu cầu: ${err.message}`);
         button.disabled = false;
       }
     });
+  }
+
+  // ---------------------------------------------------------------- Tự cập nhật trạng thái neo
+  // Worker gửi giao dịch ngay khi có bản ghi: Chờ neo -> Đã neo, chờ chốt (vài giây) -> Đã khóa (block chốt, ~13 phút).
+  // Trạng thái đổi thì tải lại trang để hiện bước mới; đã khóa thì thôi theo dõi.
+  if (!EC.isLocked(receipt)) {
+    let firstStatus = null;
+    const check = async () => {
+      const detail = await EC.api(`/receipts/${encodeURIComponent(receipt.id)}`).catch(() => null);
+      if (!detail) return;
+      if (firstStatus === null) firstStatus = detail.view.status;
+      else if (detail.view.status !== firstStatus) { clearInterval(watch); location.reload(); }
+    };
+    const watch = setInterval(check, 5000);
+    check();
   }
 
   // ---------------------------------------------------------------- OpenTimestamps (6.9)
