@@ -17,6 +17,7 @@ from app.core.payload import Anch
 from app.core.receipt import signing_address
 from app.db.enums import AnchorStatus, ChainTxKind, ChainTxStatus
 from app.db.models import AnchorBatch, AnchorLeaf, AnchorState, ChainTx, ChainTxResult, FileHash, LogRecord, Submission
+from app.services.log_service import wake_anchor_worker
 
 logger = logging.getLogger(__name__)
 EXPLORER_TX_URL = "https://sepolia.etherscan.io/tx/"
@@ -226,6 +227,7 @@ def request_anchor_now(db: Session) -> AnchorState:
     state = _locked_state(db)
     if state.anchor_requested_at is None:
         state.anchor_requested_at = _now()
+    wake_anchor_worker(db)
     db.commit()
     return state
 
