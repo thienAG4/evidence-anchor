@@ -92,8 +92,25 @@ Số nguyên luôn là big-endian không dấu. Ký hiệu `‖` là nối **byt
 | Bundle | `Bundle = SHA256(Habc ‖ SHA256(tB))`, `tB` là lúc gộp xong |
 
 Giữa hai file, hệ thống nghỉ ngẫu nhiên 1 đến 3 giây để mỗi file có mốc thời gian riêng. Lô chứng cứ tại Tòa dùng công
-thức `court-lot-v1`: thêm `SHA256("nơi nộp|số file")` vào bundle. Bundle nằm trong biên nhận và được ký, không lên chuỗi.
+thức `court-lot-v1`: thêm `SHA256("nơi nộp|số file")` vào bundle.
 Mã nguồn: [`backend/app/core/hashing.py`](backend/app/core/hashing.py).
+
+> **Bundle không phải mã đưa lên sổ công khai.** Bundle là **con dấu niêm phong của một lần nộp**. Nó nằm trong biên
+> nhận, được hệ thống ký (mục 4.5) và không lên chuỗi. Bundle chứng minh lần nộp gồm đúng các file này, gộp lúc `tB`,
+> nên không ai rút bớt hay thêm file mà không bị phát hiện.
+>
+> Thứ lên sổ công khai (Sepolia) là **root của đợt neo** (mục 4.3, 4.4). Root được gộp từ bản ghi 164 byte của từng
+> file, thuộc nhiều lần nộp và nhiều người. Mỗi file có đường dẫn Merkle riêng.
+>
+> | | Bundle | Root đợt neo |
+> |---|---|---|
+> | Gộp gì | Lá `Ha` của các file trong 1 lần nộp | `recordHash` của nhiều lần nộp trong một đợt |
+> | Nằm ở đâu | Biên nhận, có chữ ký hệ thống | Giao dịch Sepolia, ai cũng đọc được |
+> | Chứng minh | Lần nộp trọn bộ, đúng giờ gộp | Từng file tồn tại trước block và không bị sửa |
+> | Phải tin | Chữ ký của hệ thống | Chỉ blockchain |
+>
+> Hệ quả khi kiểm tra: thiếu một file vẫn tính lại được Bundle từ biên nhận, và các file còn lại vẫn có bằng chứng trên
+> chuỗi. Chỉ mục "File tải lên khớp hash trong biên nhận" báo lỗi.
 
 ### 4.2. Bản ghi 164 byte và chuỗi hash
 
@@ -330,14 +347,8 @@ Tạo bởi `seed.py`:
 |---|---|---|
 | `duongsu` | `1234` | Đương sự (nguyên đơn vụ mẫu) |
 | `thuky` | `5678` | Thư ký TAND Quận 1 |
-| `bidon` | `1234` | Đương sự (bị đơn) |
-| `luatsu` | `1234` | Luật sư |
-| `thamphan` | `5678` | Thẩm phán |
-| `thuky.phuctham` | `5678` | Thư ký TAND TP.HCM (phúc thẩm) |
-| `admin` | `5678` | Quản trị |
 
-Đương sự và thư ký có giao diện web; thẩm phán, luật sư và admin dùng API. Không có đăng ký hay OTP: tài khoản mới
-do admin tạo (`POST /admin/users`).
+Không có đăng ký hay OTP.
 
 ## 8. Kiểm thử
 
