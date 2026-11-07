@@ -6,24 +6,29 @@ HTML cho từng trang, CSS tách theo lớp (nền tảng → bố cục → com
 
 ## Chạy thử
 
-- Cách nhanh nhất: mở `index.html` bằng trình duyệt (bấm đúp). Trang sẽ tự chuyển tới trang đăng nhập.
-- Hoặc dùng extension **Live Server** của VS Code: chuột phải `index.html` → *Open with Live Server*.
+Giao diện gọi API backend thật (FastAPI + PostgreSQL), nên cần chạy backend trước — xem README ở thư mục gốc, mục 7.3.
+
+- **Cách khuyên dùng:** chạy backend rồi mở **http://localhost:8000** — backend phục vụ luôn thư mục `frontend/`,
+  giao diện và API cùng một địa chỉ.
+- Hoặc **Live Server** (cổng 5500) / bấm đúp `index.html`: giao diện tự gọi API ở `http://localhost:8000`
+  (backend đã mở CORS cho `localhost:5500` và `file://`). Đổi địa chỉ API: đặt `window.EC_API_BASE` trước khi nạp `api.js`.
 
 Cần có mạng để tải font Google và bộ icon Lucide (từ CDN).
 
-**Tài khoản demo:**
+**Tài khoản có sẵn** (tạo bằng `backend/scripts/seed.py`):
 
 | Tài khoản | Mật khẩu | Vai trò       | Vào trang            |
 |-----------|----------|---------------|----------------------|
 | `duongsu` | `1234`   | Đương sự      | Lưu chứng cứ         |
 | `thuky`   | `5678`   | Thư ký tòa án | Các lần lưu chứng cứ |
 
+Thẩm phán, admin chưa có giao diện web (đăng nhập sẽ báo), dùng API ở http://localhost:8000/docs.
+
 ## Cấu trúc thư mục
 
 ```
 frontend/
 ├── index.html                    ← điểm vào, chuyển tới trang đăng nhập
-├── app.py                        ← giao diện Streamlit cũ (không liên quan, giữ nguyên)
 ├── pages/
 │   ├── auth/
 │   │   └── login.html            ← Đăng nhập
@@ -54,7 +59,7 @@ frontend/
 │       │   ├── navigation.js     ← người dùng mẫu + menu sidebar theo vai trò
 │       │   └── status.js         ← bảng trạng thái + hàm EC.badge()
 │       ├── data/
-│       │   └── mock-data.js      ← dữ liệu mẫu (chỗ để nối API backend sau này)
+│       │   └── api.js            ← gọi API backend, đăng nhập, EC.data (thay mock-data.js)
 │       ├── components/           ← <app-header>, <app-sidebar>, <app-footer>
 │       └── pages/                ← JS riêng của từng trang (cùng tên với file HTML)
 └── design/
@@ -113,17 +118,24 @@ Muốn xem lại đúng trạng thái trong ảnh thiết kế thì thêm tham s
 
 ## Những chỗ khác bản Stitch
 
-- **Dữ liệu được thống nhất** giữa các màn hình. Bản Stitch có chỗ mâu thuẫn, ví dụ TX-0007 lúc là "Đã ghi nhận", lúc là "Đã khóa".
-  Ở đây TX-0007 là "Đã khóa"; trạng thái "chưa khóa" xem ở `receipt-detail.html?id=TX-0010`.
 - Sửa lỗi của bản Stitch: trang Đương sự bị mất tiêu đề cột và mất một hàng; mục menu không có chữ; biên nhận TX-0003 thiếu nhãn "Người lưu".
-- Trang **Lưu chứng cứ** tính **SHA-256 thật** ngay trên trình duyệt cho file bạn chọn, rồi lưu biên nhận mới vào `localStorage`.
-  Trang **Đối chiếu** so mã băm thật với các biên nhận này. Với dữ liệu mẫu (không có mã băm) thì tạm so theo tên file.
-  Muốn xóa các biên nhận đã tạo thử, gõ trong Console: `EC.data.resetSavedReceipts()`.
-- **Tự khóa lúc 23:59**: lần lưu chứng cứ "Đã ghi nhận" tự chuyển "Đã khóa" khi qua 23:59 ngày ghi nhận
-  (so với giờ thật của máy). Muốn test ngay không chờ: thêm `?lock=TX-0012` vào cuối URL của trang bất kỳ
-  (vd `pages/clerk/submissions.html?lock=TX-0012`), hoặc gõ trong Console: `EC.data.lockNow('TX-0012')` rồi F5.
+- Trang Đương sự hiện **Tên đăng nhập / Email** thay cho Số CCCD / Số điện thoại (hệ thống chưa lưu hai thông tin này).
 
-## Nối backend sau này
+## Nối với backend
 
-Mọi trang chỉ đọc dữ liệu qua `EC.data` trong `assets/js/data/mock-data.js`.
-Khi có API (từ `receipt.py` / `chain.py`), chỉ cần thay phần dữ liệu mẫu trong file đó bằng lời gọi `fetch(...)`.
+Mọi trang đọc dữ liệu qua `EC.data` trong `assets/js/data/api.js`; trang vẽ trong `EC.data.whenReady(() => …)`.
+
+| Màn hình | API |
+|---|---|
+| Đăng nhập | `POST /auth/login` → token lưu ở `localStorage`; vào trang đăng nhập = đăng xuất |
+| Lưu chứng cứ | `POST /submissions` (gửi file, **máy chủ băm rồi bỏ file**, không lưu file); chỉ nhận PDF, ảnh, video, âm thanh |
+| Biên nhận của tôi, chi tiết | `GET /submissions`, `GET /receipts/{mã}`; nút **Tải biên nhận (.json)** = biên nhận + chữ ký + bằng chứng neo |
+| Kiểm tra biên nhận (`pages/public/verify-receipt.html`, **không cần đăng nhập**, link ở trang đăng nhập) | `POST /verify`: biên nhận .json + file gốc → từng bước Đạt / Không đạt |
+| Các lần lưu chứng cứ (thư ký) | `GET /clerk/receipts` — chỉ đương sự trong **vụ án mà thư ký phụ trách** |
+| Đối chiếu | chọn file: `POST /clerk/receipts/{mã}/compare` (xem trước, không ghi); "Lưu kết quả": `POST …/verifications` (máy chủ băm lại, ghi kèm giai đoạn) |
+| Đương sự (thư ký) | `GET /clerk/litigants` |
+
+Trạng thái biên nhận: **Đã ghi nhận** = chưa neo lên blockchain → **Đã khóa** = đã neo (không ai sửa được) →
+**Tòa đã kiểm tra** = thư ký đã lưu kết quả đối chiếu **đủ n/n file** (đối chiếu dở dang: các file còn lại hiện
+"Đang kiểm tra"). Mỗi file chỉ đối chiếu 1 lần; giai đoạn đối chiếu khóa theo lần lưu đầu. Chỉ đối chiếu được sau khi đã khóa, nên muốn thử trang
+Đối chiếu phải chạy worker neo (cần `PRIVATE_KEY` ví test có Sepolia ETH — README gốc, mục 7.3).

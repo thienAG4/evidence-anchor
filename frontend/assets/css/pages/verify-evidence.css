@@ -97,6 +97,17 @@
   color: var(--color-text-secondary);
 }
 
+.verify-result-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.verify-result__time {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
 .verify-alert {
   margin-top: var(--space-5);
 }

@@ -1,0 +1,17 @@
+# Backend FastAPI (chưa ghim phiên bản — ghim sau khi cài thử được).
+# Bản Streamlit đang deploy vẫn dùng requirements.txt ở thư mục gốc.
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+alembic
+psycopg[binary]
+pydantic-settings
+PyJWT
+streaming-form-data
+web3
+requests  # đọc giao dịch Sepolia (chain_reader), script e2e
+opentimestamps==0.4.5  # OpenTimestamps (6.9): đọc, nâng cấp file .ots
+python-dotenv
+pytest
+httpx

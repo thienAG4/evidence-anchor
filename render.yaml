@@ -1,17 +1,43 @@
-# Render Blueprint: https://render.com/docs/blueprint-spec
+# Render Blueprint: Dashboard -> New -> Blueprint -> chọn repo này.
+# Web service chạy API + giao diện (frontend/) + worker neo (tiến trình con), xem backend/scripts/render_start.py.
+# Biến có "sync: false" Render sẽ hỏi lúc tạo Blueprint: điền khóa VÍ TEST, không dùng ví có tiền thật.
+databases:
+  - name: evidencechain-db
+    plan: free
+    region: singapore
+    databaseName: evidencechain
+    user: evidence_owner
+    postgresMajorVersion: "16"
+
 services:
   - type: web
     name: evidencechain
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: streamlit run frontend/app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
-    healthCheckPath: /_stcore/health
+    region: singapore
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python backend/scripts/render_start.py
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
-        value: "3.12.8"
-      - key: SEPOLIA_RPC_URL
-        value: https://ethereum-sepolia-rpc.publicnode.com
-      # Khóa ví test: nhập tay trên dashboard Render, KHÔNG ghi vào file này
+        value: 3.13.2
+      - key: DB_OWNER_URL
+        fromDatabase:
+          name: evidencechain-db
+          property: connectionString
+      - key: APP_DB_PASSWORD
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RECEIPT_SIGNING_KEY
+        sync: false
       - key: PRIVATE_KEY
         sync: false
+      - key: ANCHOR_WALLET_ADDRESS
+        sync: false
+      - key: SEPOLIA_RPC_URL
+        value: https://ethereum-sepolia-rpc.publicnode.com
+      - key: ANCHOR_MODE
+        value: per_submission
+      - key: REQUIRE_ANCHOR_BEFORE_VERIFY
+        value: "true"

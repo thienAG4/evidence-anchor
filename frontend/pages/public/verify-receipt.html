@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kiểm tra biên nhận – EvidenceChain</title>
+  <link rel="icon" type="image/png" href="../../assets/images/logo.png">
+  <link rel="stylesheet" href="../../assets/css/main.css">
+  <link rel="stylesheet" href="../../assets/css/pages/verify-receipt.css">
+
+  <script defer src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script defer src="../../assets/js/core/app.js"></script>
+  <script defer src="../../assets/js/config/navigation.js"></script>
+  <script defer src="../../assets/js/config/status.js"></script>
+  <script defer src="../../assets/js/data/api.js"></script>
+  <script defer src="../../assets/js/core/ui.js"></script>
+  <script defer src="../../assets/js/components/app-header.js"></script>
+  <script defer src="../../assets/js/components/app-footer.js"></script>
+  <script defer src="../../assets/js/pages/verify-receipt.js"></script>
+</head>
+<body class="app">
+  <!-- Trang công khai: không cần đăng nhập -->
+  <app-header></app-header>
+
+  <main class="app-main app-main--centered">
+    <section class="verify-receipt card" aria-labelledby="verify-receipt-title">
+      <h1 id="verify-receipt-title" class="page-title">Kiểm tra biên nhận</h1>
+      <p class="verify-receipt__subtitle">
+        Ai có biên nhận và file gốc đều tự kiểm tra được, không cần tài khoản: file còn nguyên vẹn, biên nhận đúng
+        chữ ký hệ thống, và đã được ghi lên chuỗi công khai (Ethereum Sepolia).
+      </p>
+
+      <div class="form-field">
+        <span class="form-label">1. Biên nhận (file .json tải từ trang Chi tiết biên nhận)</span>
+        <div class="file-picker">
+          <label class="btn btn--secondary">
+            <i data-lucide="file-json"></i>
+            Chọn biên nhận
+            <input id="receipt-input" class="sr-only" type="file" accept=".json,application/json">
+          </label>
+          <span id="receipt-name" class="form-hint">Chưa chọn biên nhận</span>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <span class="form-label">2. File gốc trong biên nhận (đổi tên, đổi thứ tự không sao)</span>
+        <div class="file-picker">
+          <label class="btn btn--secondary">
+            <i data-lucide="upload"></i>
+            Chọn file gốc
+            <input id="files-input" class="sr-only" type="file" multiple accept=".pdf,image/*,video/*,audio/*">
+          </label>
+        </div>
+        <ul id="files-list" class="file-list" hidden></ul>
+      </div>
+
+      <p class="verify-receipt__notice">
+        File được gửi lên để máy chủ tính mã băm rồi bỏ ngay, không lưu lại. Kết quả chỉ cho biết file có khớp bản đã
+        lưu chứng hay không, không xác định nội dung thật hay giả.
+      </p>
+
+      <button id="verify-button" type="button" class="btn btn--primary btn--block" disabled>
+        <i data-lucide="shield-check"></i>
+        <span id="verify-label">Kiểm tra</span>
+      </button>
+
+      <!-- Kết quả -->
+      <div id="verify-result" class="verify-receipt__result" hidden>
+        <div id="verify-summary" class="alert"></div>
+        <ul id="verify-checks" class="verify-receipt__checks"></ul>
+      </div>
+
+      <p class="verify-receipt__footer">
+        <a class="link" href="../auth/login.html">Về trang đăng nhập</a>
+      </p>
+    </section>
+  </main>
+
+  <app-footer></app-footer>
+</body>
+</html>

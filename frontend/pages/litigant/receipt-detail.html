@@ -12,7 +12,8 @@
   <script defer src="../../assets/js/core/app.js"></script>
   <script defer src="../../assets/js/config/navigation.js"></script>
   <script defer src="../../assets/js/config/status.js"></script>
-  <script defer src="../../assets/js/data/mock-data.js"></script>
+  <script defer src="../../assets/js/data/api.js"></script>
+  <script defer src="../../assets/js/data/ots.js"></script>
   <script defer src="../../assets/js/core/ui.js"></script>
   <script defer src="../../assets/js/components/app-header.js"></script>
   <script defer src="../../assets/js/components/app-sidebar.js"></script>
@@ -49,6 +50,12 @@
           <!-- Tiến trình -->
           <section class="card page-section receipt-progress" aria-label="Tiến trình">
             <ol id="receipt-stepper" class="stepper"></ol>
+            <div id="receipt-anchor-now" class="receipt-anchor-now" hidden>
+              <p id="receipt-anchor-hint" class="form-hint"></p>
+              <button id="receipt-anchor-button" type="button" class="btn btn--secondary">
+                <i data-lucide="anchor" class="icon-sm"></i>Neo ngay
+              </button>
+            </div>
           </section>
 
           <!-- Thông tin chung -->
@@ -79,9 +86,10 @@
               <table class="table">
                 <thead>
                   <tr>
-                    <th style="width: 25%">Mã cần ghi</th>
+                    <th style="width: 20%">Mã cần ghi</th>
                     <th>File của bạn</th>
-                    <th style="width: 25%">Trạng thái</th>
+                    <th style="width: 20%">Trạng thái</th>
+                    <th style="width: 20%">Kiểm tra lúc</th>
                   </tr>
                 </thead>
                 <tbody id="receipt-files-body"></tbody>
@@ -90,7 +98,7 @@
 
             <p id="receipt-legend" class="receipt-files__legend" hidden>
               <strong>Chú thích:</strong>
-              Trùng khớp: file không thay đổi · Không khớp: file đã bị thay đổi ·
+              Khớp bản lưu chứng: không phát hiện khác biệt · Khác bản lưu chứng: có khác biệt so với bản đã lưu ·
               Đang kiểm tra: Tòa đang đối chiếu · Chưa kiểm tra: Tòa chưa đối chiếu
             </p>
             <p class="receipt-files__footnote">
@@ -104,12 +112,50 @@
             </details>
           </section>
 
+          <!-- OpenTimestamps (6.9): trình duyệt tự đóng dấu hash file lên Bitcoin, độc lập với Tòa và Ethereum -->
+          <section id="receipt-ots" class="card page-section" hidden>
+            <header class="card__header">
+              <div>
+                <h2 class="card__title">Dấu thời gian Bitcoin (OpenTimestamps)</h2>
+                <p class="section-subtitle">
+                  Trình duyệt của bạn tự đóng dấu mã băm của từng file lên Bitcoin, không qua Tòa. Máy chủ đóng dấu không
+                  thấy file. Bitcoin xác nhận sau vài giờ; hãy tải file .ots về và giữ cùng file gốc.
+                </p>
+              </div>
+            </header>
+            <p id="receipt-ots-note" class="form-hint"></p>
+            <ul id="receipt-ots-list" class="ots-list"></ul>
+          </section>
+
+          <!-- Tự kiểm tra (UI-16): tải biên nhận hoàn chỉnh rồi kiểm tra, không cần hỏi Tòa -->
+          <section class="card page-section">
+            <header class="card__header">
+              <div>
+                <h2 class="card__title">Tự kiểm tra biên nhận</h2>
+                <p class="section-subtitle">
+                  Tải biên nhận về máy và giữ cùng file gốc. Bất cứ lúc nào, bạn hoặc người khác (luật sư, Tòa) cũng tự
+                  kiểm tra được mà không cần tài khoản: file còn nguyên vẹn, biên nhận đúng chữ ký hệ thống và đã ghi lên
+                  chuỗi công khai.
+                </p>
+              </div>
+            </header>
+            <p id="receipt-download-note" class="form-hint" hidden></p>
+            <div class="page-actions">
+              <button id="receipt-download" type="button" class="btn btn--primary">
+                <i data-lucide="download" class="icon-sm"></i>Tải biên nhận (.json)
+              </button>
+              <a class="btn btn--secondary" href="../public/verify-receipt.html">
+                <i data-lucide="shield-check" class="icon-sm"></i>Kiểm tra biên nhận
+              </a>
+            </div>
+          </section>
+
           <aside class="alert alert--note page-section">
             <div>
               <p class="alert__title">Lưu ý</p>
               <p class="alert__text">
                 Hãy giữ nguyên file gốc. Nếu file bị gửi qua Zalo, nén, hoặc mở ra rồi lưu lại, Tòa sẽ thấy kết quả
-                "Không giống bản bạn lưu". Biên nhận chỉ chứng minh file đã có từ thời điểm trên, không chứng minh nội dung là thật.
+                "Khác bản lưu chứng". Biên nhận chỉ chứng minh file đã có từ thời điểm trên, không chứng minh nội dung là thật.
               </p>
             </div>
           </aside>
